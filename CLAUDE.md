@@ -5,6 +5,12 @@ regions where the author met people.
 (Originally prototyped under a different name; the project is now **Lanaforge Atlas** — no
 other product name should appear anywhere.)
 
+> **The code is the source of truth.** This doc explains *structure, intent, and where things
+> live* — not current values. Visual tuning numbers (dot sizes/opacities, spacings, colors, zoom
+> limits, rotation speed, attenuation, thresholds, fade) change often; **always read them from the
+> named constant in the file, never from here.** This file names the knob and its file; it does not
+> quote its value. If you find a literal tuning value written below, treat it as stale and delete it.
+
 ## Stack
 Vite 5 · vanilla JS (ES modules) · three.js `^0.160` · d3-geo `^3` (build-time only) ·
 Vitest (+ jsdom for DOM tests). **Node ≥ 18** (build script uses global `fetch`).
@@ -36,25 +42,29 @@ valid ids.
 Spec: `docs/superpowers/specs/2026-06-25-lanaforge-atlas-dot-style.md`.
 **Round** dots (custom `THREE.ShaderMaterial`, per-vertex `aSize`/`aOpacity`, round-discard in
 fragment, depth fade dims the far hemisphere). **No border lines** — borders are dots. Three
-categories (each point tagged `category`), tuned in `CATEGORY_STYLE` (`src/globe.js`):
-- **coast** — coastline outline; biggest, strongest (size 2.6 / opacity 0.85); dense along coast (`coastline` source).
-- **land** — uniform interior grid; small, faint (1.8 / 0.30); grid spacing ~1.5° (point-in-polygon).
-- **border** — intra-continental country borders + the 4 countries' state borders; same size as
-  land, a touch more opaque (1.8 / 0.45), **denser** (~0.7°) so it reads as a seam that separates
-  neighbours (e.g. US/Canada). `regionId` is `null` for border dots (not highlighted).
-All islands kept (no size filter). **Highlight** (= author's choice "B"): a highlighted region's
-own dots turn orange `#ff5a1f` AND opacity is boosted to ~0.9 so it reads over faint dots
-(`applyHighlights` sets color + opacity). Orange is constant across themes.
+categories (each point tagged `category`); per-category size/opacity live in `CATEGORY_STYLE`
+(`src/globe.js`), per-category spacing in `generatePoints` (`scripts/lib/points.mjs`):
+- **coast** — coastline outline; the biggest, strongest category; densely traced along the
+  coastline (`coastline` source).
+- **land** — uniform interior grid filling each territory; small and faint (point-in-polygon).
+- **border** — intra-continental country borders + the 4 countries' state borders; sized like land
+  but a touch more opaque and **denser**, so it reads as a seam that separates neighbours (e.g.
+  US/Canada). `regionId` is `null` for border dots (not highlighted).
+All islands kept (no size filter). Dots are **world-anchored** (perspective size attenuation via
+the `uRefDist` uniform in `src/globe.js`) so they grow on zoom-in. **Highlight** (= author's choice
+"B"): a highlighted region's own dots switch to `HIGHLIGHT_COLOR` (`src/config.js`) AND their opacity
+is boosted (the highlight-opacity arg of `applyHighlights` in `main.js`) so they read over faint
+dots. The highlight color is constant across themes.
 
 ## Key files
-- `src/config.js` — `GLOBE_RADIUS=1`, `ZOOM_MIN=1.15`, `ZOOM_MAX=2.6`, `TIER_FAR=2.0`,
-  `TIER_NEAR=1.4`, `HIGHLIGHT_COLOR='#ff5a1f'`, `STATE_LEVEL`, `SOURCES` (5 Natural Earth URLs:
-  admin-0 countries 50m, admin-1 states **10m**, admin-0 boundary_lines_land 50m, admin-1 lines
-  **10m**, coastline 50m).
+- `src/config.js` — tuning/structure constants: `GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`,
+  `TIER_FAR`/`TIER_NEAR` (label zoom tiers), `HIGHLIGHT_COLOR`, `STATE_LEVEL`, `SOURCES` (5 Natural
+  Earth URLs: admin-0 countries 50m, admin-1 states **10m**, admin-0 boundary_lines_land 50m,
+  admin-1 lines **10m**, coastline 50m). Read current values from the file.
 - `src/geo.js` — `latLonToVector3`, `vector3ToScreen`, `angularDistanceDeg`.
 - `src/globe.js` — `buildPointsGeometry` (position/color/aSize/aOpacity; `regionIndexMap` only for
-  non-null regionId), `createPointsObject` (round-dot ShaderMaterial; returns
-  `{points,geometry,regionIndexMap,baseColors,baseOpacity}`).
+  non-null regionId), `createPointsObject` (round-dot ShaderMaterial w/ `uRefDist` size attenuation;
+  returns `{points,geometry,regionIndexMap,baseColors,baseOpacity}`).
 - `src/highlight.js` — `buildHighlightSet`, `applyHighlights(geometry, regionIndexMap, baseColors,
   baseOpacity, set, colorHex, highlightOpacity)`.
 - `src/controls.js` — `createControls` (OrbitControls; min/max distance; pan disabled).
@@ -89,21 +99,26 @@ own dots turn orange `#ff5a1f` AND opacity is boosted to ~0.9 so it reads over f
   e.g. `JPN`) — use the `ISO3_TO_ISO2` map, not `.slice(0,2)`.
 - **Fresh checkout**: `public/data/` and `scripts/geo-src/` are gitignored, so `npm run fetch-geo`
   + `npm run data` must run before `npm run build` (build = `data && vite build`).
-- Auto-rotation spins the `root` group (not the camera) at `0.00027` rad/frame; it pauses ONLY
-  while the left mouse button is held (`leftDown` flag), not on zoom. Per frame, main.js updates
-  the shader uniform `uCamDist = camera.position.length()`.
+- Auto-rotation spins the `root` group (not the camera) at a slow constant rate (the literal is in
+  `src/main.js`); it pauses ONLY while the left mouse button is held (`leftDown` flag), not on zoom.
+  Per frame, main.js updates the shader uniform `uCamDist = camera.position.length()`.
 
 ## Commands
 `npm run dev` · `npm run build` (= `npm run data && vite build`) · `npm run preview` ·
 `npm run fetch-geo` · `npm run data` · `npm test` (Vitest).
 
-## Tunable visual knobs
-`CATEGORY_STYLE` sizes/opacities (`src/globe.js`) · dot spacings in `generatePoints` (`scripts/lib/points.mjs`,
-re-run `npm run data` after) · depth-fade floor `mix(0.25,1.0,…)` in the fragment shader
-(`src/globe.js`) · **dot size attenuation** `uRefDist` uniform (`src/globe.js`, default `1.4`): dots are
-world-anchored (perspective `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`) so they grow on zoom-in;
-lower `uRefDist` = smaller dots overall · highlight opacity (`applyHighlights(..., 0.9)` in `main.js`) ·
-rotation speed `0.00027` and raycaster `Points.threshold = 0.012` (`src/main.js`).
+## Tunable visual knobs (names + locations only — values live in the code)
+- **Dot size & opacity** per category — `CATEGORY_STYLE` (`src/globe.js`).
+- **Dot spacing** per category — args in `generatePoints` (`scripts/lib/points.mjs`); **re-run
+  `npm run data`** after (spacing is baked into `points.json`). Everything else here is runtime
+  (hot-reloads in `npm run dev`).
+- **Dot size attenuation** (world-anchored growth on zoom) — `uRefDist` uniform (`src/globe.js`);
+  lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
+- **Far-hemisphere fade** — the `mix(...)` floor in the fragment shader (`src/globe.js`).
+- **Highlight color & opacity boost** — `HIGHLIGHT_COLOR` (`src/config.js`) + the highlight-opacity
+  arg to `applyHighlights` (`src/main.js`).
+- **Rotation speed** & **raycaster `Points.threshold`** — `src/main.js`.
+- **Zoom limits / label tiers** — `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR` (`src/config.js`).
 
 ## Status
 v1 (14-country, square contour/fill dots, border lines) shipped, then revised to **v2** (this doc):

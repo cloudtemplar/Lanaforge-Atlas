@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLOBE_RADIUS, HIGHLIGHT_COLOR } from './config.js';
 import { createPointsObject, createBordersObject } from './globe.js';
 import { buildHighlightSet, applyHighlights } from './highlight.js';
+import { createControls, makeIdleAutoRotate } from './controls.js';
 import highlights from '../data/highlights.json';
 
 const THEME = { bg: '#0d0d0f', dot: '#f2f2f2', border: '#555', text: '#f2f2f2' };
@@ -26,6 +27,11 @@ resize();
 const root = new THREE.Group();
 scene.add(root);
 
+const controls = createControls(camera, renderer.domElement);
+const idle = makeIdleAutoRotate({ idleMs: 2500 });
+controls.addEventListener('start', () => idle.onInteract(performance.now()));
+controls.addEventListener('change', () => idle.onInteract(performance.now()));
+
 async function loadGlobe() {
   const data = await fetch('data/points.json').then((r) => r.json());
   const obj = createPointsObject(data.points, GLOBE_RADIUS, THEME);
@@ -44,7 +50,9 @@ async function loadGlobe() {
 }
 
 function animate() {
-  root.rotation.y += 0.0009; // slow auto-rotation
+  const now = performance.now();
+  if (idle.shouldAutoRotate(now)) root.rotation.y += 0.0009;
+  controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

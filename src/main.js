@@ -116,7 +116,8 @@ async function loadGlobe() {
 }
 
 function animate() {
-  // Auto-rotate at ~70% of original speed; pause ONLY while left mouse is down
+  // Auto-rotate ~70% slower than before (0.00027 = 30% of the original 0.0009);
+  // pause ONLY while the left mouse button is held (drag); scroll/zoom does not pause.
   if (!leftDown) root.rotation.y += 0.00027;
   controls.update();
   renderer.render(scene, camera);

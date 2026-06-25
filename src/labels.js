@@ -38,6 +38,21 @@ export function cullCollisions(candidates) {
   return keptIdx;
 }
 
+export function createCursorLabel({ overlayEl }) {
+  const el = document.createElement('div');
+  el.className = 'region-pill';
+  overlayEl.appendChild(el);
+  return {
+    show(name, x, y) {
+      el.textContent = name;
+      el.style.left = `${x}px`;
+      el.style.top = `${y - 18}px`; // pinned just above the cursor
+      el.classList.add('visible');
+    },
+    hide() { el.classList.remove('visible'); },
+  };
+}
+
 export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByRegion }) {
   const active = regions.filter((r) => highlightSet.has(r.id));
 

@@ -12,6 +12,16 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
   width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;
 }
 
+.region-pill {
+  position: absolute; transform: translate(-50%, -100%);
+  background: rgba(20,20,24,0.85); color: #fff;
+  padding: 4px 10px; border-radius: 999px;
+  font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 160ms ease;
+}
+.region-pill.visible { opacity: 1; }
+
 .people-list {
   pointer-events: auto;
   text-align: center;

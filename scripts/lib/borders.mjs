@@ -1,6 +1,6 @@
-import { FOURTEEN } from '../../src/config.js';
+import { STATE_LEVEL } from '../../src/config.js';
 
-// alpha-3 -> alpha-2 for the 14 sub-region countries.
+// alpha-3 -> alpha-2 for the state-level countries (and others, harmless extras).
 // Real 10m state-lines GeoJSON uses ADM0_A3 (3-letter ISO), not iso_a2.
 // Slicing the first 2 chars of a 3-letter code is broken — e.g. 'SWE'.slice(0,2) === 'SW' !== 'SE'.
 const ISO3_TO_ISO2 = {
@@ -51,7 +51,7 @@ function pushGeometry(geom, out) {
  * Includes:
  *   - ALL country-level boundary lines (intra-continental, no coastlines — that's
  *     what ne_50m_admin_0_boundary_lines_land contains).
- *   - State/province lines ONLY for the 14 sub-region countries (FOURTEEN).
+ *   - State/province lines ONLY for the 14 sub-region countries (STATE_LEVEL).
  *
  * @param {object} countryLinesFC  GeoJSON FeatureCollection of country boundary lines
  * @param {object} stateLinesFC    GeoJSON FeatureCollection of state/province lines
@@ -67,7 +67,7 @@ export function buildBorders(countryLinesFC, stateLinesFC) {
 
   // State lines filtered to the 14 sub-region countries only.
   for (const f of stateLinesFC.features) {
-    if (!FOURTEEN.includes(parentAlpha2(f.properties))) continue;
+    if (!STATE_LEVEL.includes(parentAlpha2(f.properties))) continue;
     pushGeometry(f.geometry, out);
   }
 

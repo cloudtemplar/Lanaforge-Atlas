@@ -18,4 +18,5 @@ export const SOURCES = {
   states:      `${RAW}/ne_10m_admin_1_states_provinces.geojson`,
   countryLines:`${RAW}/ne_50m_admin_0_boundary_lines_land.geojson`,
   stateLines:  `${RAW}/ne_10m_admin_1_states_provinces_lines.geojson`,
+  coastline:   `${RAW}/ne_50m_coastline.geojson`,
 };

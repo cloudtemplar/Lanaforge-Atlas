@@ -11,6 +11,7 @@ const TARGETS = {
   'states.geojson': SOURCES.states,
   'country-lines.geojson': SOURCES.countryLines,
   'state-lines.geojson': SOURCES.stateLines,
+  'coastline.geojson': SOURCES.coastline,
 };
 
 await mkdir(outDir, { recursive: true });

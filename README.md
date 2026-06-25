@@ -1,7 +1,7 @@
-# VRChat Globe
+# Lanaforge Atlas
 
-A minimalist transparent dot-matrix 3D globe (three.js) highlighting world regions
-where I met at least one person in VRChat.
+A minimalist transparent dot-matrix 3D globe (three.js) highlighting the world regions
+where I've met people.
 
 ## Setup
 ```bash

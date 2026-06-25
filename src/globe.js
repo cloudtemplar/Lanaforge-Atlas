@@ -3,11 +3,11 @@ import { latLonToVector3 } from './geo.js';
 
 // Per-category visual style (CSS px sizes + base opacity)
 const CATEGORY_STYLE = {
-  coast:  { size: 2.6, opacity: 0.85 },
-  land:   { size: 1.8, opacity: 0.30 },
-  border: { size: 2.0, opacity: 0.50 },
+  coast:  { size: 5.0, opacity: 0.70 },
+  land:   { size: 3.3, opacity: 0.25 },
+  border: { size: 4.2, opacity: 0.40 },
 };
-const CATEGORY_FALLBACK = { size: 1.8, opacity: 0.4 };
+const CATEGORY_FALLBACK = { size: 3.3, opacity: 0.35 };
 
 export function buildPointsGeometry(points, radius) {
   const n = points.length;

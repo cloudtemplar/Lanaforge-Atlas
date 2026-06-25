@@ -135,9 +135,8 @@ function walkLineGeometry(geom, stepDeg, emitFn) {
 
 /**
  * Uniform interior grid, cosine-corrected to keep dot density even across latitudes.
- * Emits ONLY points inside a known region. Default spacing ~1.5°.
  */
-export function generateLandPoints(index, stepDeg = 1.5) {
+export function generateLandPoints(index, stepDeg = 1.0) {
   const out = [];
   for (let lat = -89; lat <= 89; lat += stepDeg) {
     const lonStep = stepDeg / Math.max(Math.cos((lat * Math.PI) / 180), 0.15);
@@ -189,15 +188,12 @@ export function generateBorderPoints(countryLinesFC, stateLinesFC, stepDeg = 0.7
 
 /**
  * Master point generator. Produces all three categories:
- *   coast  (0.45° spacing) – coastline traces with nudged regionId
- *   land   (1.5° spacing)  – uniform interior grid, inside regions only
- *   border (0.7° spacing)  – country + state boundary lines, regionId null
  */
 export function generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC) {
   const index = buildRegionIndex(features);
   return [
-    ...generateCoastPoints(coastlineFC, index, 0.45),
-    ...generateLandPoints(index, 1.5),
-    ...generateBorderPoints(countryLinesFC, stateLinesFC, 0.7),
+    ...generateCoastPoints(coastlineFC, index, 0.5),
+    ...generateLandPoints(index, 1.0),
+    ...generateBorderPoints(countryLinesFC, stateLinesFC, 0.75),
   ];
 }

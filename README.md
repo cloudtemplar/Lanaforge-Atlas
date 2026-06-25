@@ -24,7 +24,12 @@ BR, AR, US, CA, AU, GB, DE, IT, FR, ES, NO, SE, FI, JP.
 
 ## Build & deploy
 ```bash
-npm run build       # runs data generation + vite build -> dist/
+npm install
+npm run fetch-geo   # one-time: downloads Natural Earth source (needed before build)
+npm run build       # generates data + vite build -> dist/
 npm run preview
 ```
 Deploy `dist/` to any static host (GitHub Pages / Vercel / Netlify).
+
+> **Note:** `npm run fetch-geo` must run at least once to populate `scripts/geo-src/` (gitignored).
+> Skipping it causes `npm run build` to fail with ENOENT.

@@ -125,6 +125,10 @@ function animate() {
   renderer.render(scene, camera);
   if (labelLayer) labelLayer.update(camera, root, window.innerWidth, window.innerHeight, camera.position.length());
 
+  if (globe && globe.points.material.userData.shader) {
+    globe.points.material.userData.shader.uniforms.uCamDist.value = camera.position.length();
+  }
+
   if (globe && vertexRegion) {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObject(globe.points, false);

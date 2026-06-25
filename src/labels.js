@@ -74,16 +74,14 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     return `<div class="region-name">${escapeHtml(r.name)}</div><ul>${items}</ul>${more}`;
   }
 
-  // Track which elements have had their DOM built and which are fully expanded.
+  // Track which elements have had their DOM built.
   const builtSet = new Set();
-  const expanded = new Set();
 
   // Delegate expand-click to the overlay element (single listener, avoids per-node listeners).
   overlayEl.addEventListener('click', (e) => {
     const btn = e.target.closest('button.more');
     if (!btn) return;
     const regionId = btn.dataset.region;
-    expanded.add(regionId);
     const r = active.find((x) => x.id === regionId);
     if (!r) return;
     const el = nodes.get(r.id);
@@ -110,6 +108,11 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     for (const r of active) {
       const local = latLonToVector3(r.centroid.lat, r.centroid.lon, GLOBE_RADIUS);
       const world = local.clone().applyMatrix4(root.matrixWorld);
+      // Limb cull: skip regions on the back hemisphere (dot product < R²).
+      if (world.dot(camera.position) <= GLOBE_RADIUS * GLOBE_RADIUS) {
+        screenById.set(r.id, null);
+        continue;
+      }
       const s = vector3ToScreen(world, camera, width, height);
       if (!s.visible || s.x < 0 || s.y < 0 || s.x > width || s.y > height) {
         screenById.set(r.id, null);

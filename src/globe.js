@@ -44,6 +44,20 @@ export function createPointsObject(points, radius, theme) {
     depthWrite: false,      // transparent globe: far-side points show through
     sizeAttenuation: true,
   });
+
+  // Depth cue: fade alpha for far-hemisphere points. uCamDist updated per frame from main.js.
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uCamDist = { value: 2.4 };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uCamDist;\nvarying float vDepth;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vDepth = mvPosition.z + uCamDist;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vDepth;')
+      .replace('vec4 diffuseColor = vec4( diffuse, opacity );',
+               'float depthFade = smoothstep(-1.0, 1.0, vDepth);\n  vec4 diffuseColor = vec4( diffuse, opacity * mix(0.2, 1.0, depthFade) );');
+    material.userData.shader = shader;
+  };
+
   const pointsObj = new THREE.Points(geometry, material);
   return { points: pointsObj, geometry, regionIndexMap, baseColors };
 }

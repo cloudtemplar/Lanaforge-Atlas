@@ -1,6 +1,14 @@
 import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS } from './config.js';
 import { latLonToVector3, vector3ToScreen } from './geo.js';
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function zoomTier(d) {
   if (d > TIER_FAR) return 'far';
   if (d < TIER_NEAR) return 'near';
@@ -45,10 +53,10 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
 
   function buildListHTML(r, allNames) {
     const { shown, total, hiddenCount } = truncateList(allNames);
-    const items = shown.map((n) => `<li>${n}</li>`).join('');
+    const items = shown.map((n) => `<li>${escapeHtml(n)}</li>`).join('');
     const more = hiddenCount > 0
       ? `<button class="more" data-region="${r.id}">+${hiddenCount} more (${total})</button>` : '';
-    return `<div class="region-name">${r.name}</div><ul>${items}</ul>${more}`;
+    return `<div class="region-name">${escapeHtml(r.name)}</div><ul>${items}</ul>${more}`;
   }
 
   // Track which elements have had their DOM built and which are fully expanded.
@@ -67,7 +75,7 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     if (!el) return;
     const allNames = (peopleByRegion[r.id] || []).slice().sort((a, b) => a.localeCompare(b));
     const ul = el.querySelector('ul');
-    if (ul) ul.innerHTML = allNames.map((n) => `<li>${n}</li>`).join('');
+    if (ul) ul.innerHTML = allNames.map((n) => `<li>${escapeHtml(n)}</li>`).join('');
     btn.remove();
   });
 

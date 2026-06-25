@@ -2,3 +2,4 @@ node_modules/
 dist/
 scripts/geo-src/
 public/data/
+.claude/

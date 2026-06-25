@@ -1,78 +1,100 @@
 import * as THREE from 'three';
 import { latLonToVector3 } from './geo.js';
 
-// Per-tier base appearance (theme-aware base color is applied in createPointsObject).
-export const TIER_INTENSITY = { contour: 1.0, fill: 0.45 };
+// Per-category visual style (CSS px sizes + base opacity)
+const CATEGORY_STYLE = {
+  coast:  { size: 2.6, opacity: 0.85 },
+  land:   { size: 1.8, opacity: 0.30 },
+  border: { size: 1.8, opacity: 0.45 },
+};
+const CATEGORY_FALLBACK = { size: 1.8, opacity: 0.4 };
 
 export function buildPointsGeometry(points, radius) {
   const n = points.length;
   const positions = new Float32Array(n * 3);
-  const colors = new Float32Array(n * 3);
+  const colors    = new Float32Array(n * 3);
+  const sizes     = new Float32Array(n);
+  const opacities = new Float32Array(n);
   const regionIndexMap = new Map();
 
   for (let i = 0; i < n; i++) {
     const p = points[i];
     const v = latLonToVector3(p.lat, p.lon, radius);
-    positions[i * 3] = v.x;
+    positions[i * 3]     = v.x;
     positions[i * 3 + 1] = v.y;
     positions[i * 3 + 2] = v.z;
-    if (!regionIndexMap.has(p.regionId)) regionIndexMap.set(p.regionId, []);
-    regionIndexMap.get(p.regionId).push(i);
+
+    const style = CATEGORY_STYLE[p.category] ?? CATEGORY_FALLBACK;
+    sizes[i]     = style.size;
+    opacities[i] = style.opacity;
+
+    // Only index non-null regionIds
+    if (p.regionId != null) {
+      if (!regionIndexMap.has(p.regionId)) regionIndexMap.set(p.regionId, []);
+      regionIndexMap.get(p.regionId).push(i);
+    }
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
+  geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes,     1));
+  geometry.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1));
   return { geometry, regionIndexMap };
 }
 
 export function createPointsObject(points, radius, theme) {
   const { geometry, regionIndexMap } = buildPointsGeometry(points, radius);
+
+  // Set base color = theme.dot for ALL points
   const base = new THREE.Color(theme.dot);
   const colorAttr = geometry.getAttribute('color');
   for (let i = 0; i < points.length; i++) {
-    const k = TIER_INTENSITY[points[i].tier] ?? 0.6;
-    colorAttr.setXYZ(i, base.r * k, base.g * k, base.b * k);
+    colorAttr.setXYZ(i, base.r, base.g, base.b);
   }
-  const baseColors = Float32Array.from(colorAttr.array);
+  const baseColors  = Float32Array.from(colorAttr.array);
+  const aOpacityAttr = geometry.getAttribute('aOpacity');
+  const baseOpacity = Float32Array.from(aOpacityAttr.array);
 
-  const material = new THREE.PointsMaterial({
-    size: 0.01,
-    vertexColors: true,
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uCamDist:   { value: 2.4 },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+    },
     transparent: true,
-    opacity: 0.95,
-    depthWrite: false,      // transparent globe: far-side points show through
-    sizeAttenuation: true,
+    depthWrite: false,
+    vertexShader: `
+      attribute float aSize;
+      attribute float aOpacity;
+      attribute vec3 color;
+      uniform float uCamDist;
+      uniform float uPixelRatio;
+      varying float vDepth;
+      varying float vOpacity;
+      varying vec3 vColor;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vDepth = mv.z + uCamDist;     // ~+1 near pole, ~-1 far pole (radius 1)
+        vOpacity = aOpacity;
+        vColor = color;
+        gl_PointSize = aSize * uPixelRatio;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      varying float vDepth;
+      varying float vOpacity;
+      varying vec3 vColor;
+      void main() {
+        vec2 d = gl_PointCoord - vec2(0.5);
+        if (dot(d, d) > 0.25) discard;            // round dot
+        float depthFade = smoothstep(-1.0, 1.0, vDepth);
+        float alpha = vOpacity * mix(0.25, 1.0, depthFade); // far side dimmer
+        gl_FragColor = vec4(vColor, alpha);
+      }
+    `,
   });
-
-  // Depth cue: fade alpha for far-hemisphere points. uCamDist updated per frame from main.js.
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uCamDist = { value: 2.4 };
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uCamDist;\nvarying float vDepth;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\n  vDepth = mvPosition.z + uCamDist;');
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vDepth;')
-      .replace('vec4 diffuseColor = vec4( diffuse, opacity );',
-               'float depthFade = smoothstep(-1.0, 1.0, vDepth);\n  vec4 diffuseColor = vec4( diffuse, opacity * mix(0.2, 1.0, depthFade) );');
-    material.userData.shader = shader;
-  };
 
   const pointsObj = new THREE.Points(geometry, material);
-  return { points: pointsObj, geometry, regionIndexMap, baseColors };
-}
-
-export function createBordersObject(segments, radius, theme) {
-  const positions = new Float32Array(segments.length * 3);
-  for (let i = 0; i < segments.length; i++) {
-    const [lat, lon] = segments[i];
-    const v = latLonToVector3(lat, lon, radius * 1.001); // a hair above the dots
-    positions[i * 3] = v.x; positions[i * 3 + 1] = v.y; positions[i * 3 + 2] = v.z;
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const material = new THREE.LineBasicMaterial({
-    color: new THREE.Color(theme.border), transparent: true, opacity: 0.35, depthWrite: false,
-  });
-  return new THREE.LineSegments(geometry, material);
+  return { points: pointsObj, geometry, regionIndexMap, baseColors, baseOpacity };
 }

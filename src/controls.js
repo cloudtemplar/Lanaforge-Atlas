@@ -12,11 +12,3 @@ export function createControls(camera, domElement) {
   controls.maxDistance = ZOOM_MAX;
   return controls;
 }
-
-export function makeIdleAutoRotate({ idleMs }) {
-  let lastInteract = -Infinity;
-  return {
-    onInteract(now) { lastInteract = now; },
-    shouldAutoRotate(now) { return now - lastInteract >= idleMs; },
-  };
-}

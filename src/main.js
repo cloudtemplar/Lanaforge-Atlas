@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { GLOBE_RADIUS, HIGHLIGHT_COLOR } from './config.js';
-import { createPointsObject, createBordersObject, TIER_INTENSITY } from './globe.js';
+import { createPointsObject } from './globe.js';
 import { buildHighlightSet, applyHighlights } from './highlight.js';
-import { createControls, makeIdleAutoRotate } from './controls.js';
+import { createControls } from './controls.js';
 import { createLabelLayer, createCursorLabel } from './labels.js';
 import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
@@ -10,7 +10,6 @@ import highlights from '../data/highlights.json';
 // --- Module-scoped refs for recolor ----------------------------------------
 let globe = null;
 let loadedPoints = null;
-let bordersObj = null;
 let highlightSet = null;
 
 // --- Theme setup -----------------------------------------------------------
@@ -27,14 +26,13 @@ document.getElementById('theme-toggle').addEventListener('click', () => themeCtl
 function recolorGlobe(colors) {
   if (!globe || !loadedPoints) return;
   const base = new THREE.Color(colors.dot);
+  // All points get the same base color (no per-category tint)
   for (let i = 0; i < loadedPoints.length; i++) {
-    const k = TIER_INTENSITY[loadedPoints[i].tier] ?? 0.6;
-    globe.baseColors[i * 3]     = base.r * k;
-    globe.baseColors[i * 3 + 1] = base.g * k;
-    globe.baseColors[i * 3 + 2] = base.b * k;
+    globe.baseColors[i * 3]     = base.r;
+    globe.baseColors[i * 3 + 1] = base.g;
+    globe.baseColors[i * 3 + 2] = base.b;
   }
-  applyHighlights(globe.geometry, globe.regionIndexMap, globe.baseColors, highlightSet || new Set(), HIGHLIGHT_COLOR);
-  if (bordersObj) bordersObj.material.color.set(colors.border);
+  applyHighlights(globe.geometry, globe.regionIndexMap, globe.baseColors, globe.baseOpacity, highlightSet || new Set(), HIGHLIGHT_COLOR, 0.9);
 }
 
 // --- Scene setup -----------------------------------------------------------
@@ -76,9 +74,12 @@ const root = new THREE.Group();
 scene.add(root);
 
 const controls = createControls(camera, renderer.domElement);
-const idle = makeIdleAutoRotate({ idleMs: 2500 });
-controls.addEventListener('start', () => idle.onInteract(performance.now()));
-controls.addEventListener('change', () => idle.onInteract(performance.now()));
+
+// --- Drag-only pause: auto-rotation pauses ONLY while left mouse button is held ---
+let leftDown = false;
+renderer.domElement.addEventListener('pointerdown', (e) => { if (e.button === 0) leftDown = true; });
+window.addEventListener('pointerup',     () => { leftDown = false; });
+window.addEventListener('pointercancel', () => { leftDown = false; });
 
 async function loadGlobe() {
   const data = await fetch('data/points.json').then((r) => r.json());
@@ -86,17 +87,13 @@ async function loadGlobe() {
   const obj = createPointsObject(data.points, GLOBE_RADIUS, THEME);
   root.add(obj.points);
 
-  const borderData = await fetch('data/borders.json').then((r) => r.json());
-  bordersObj = createBordersObject(borderData.segments, GLOBE_RADIUS, THEME);
-  root.add(bordersObj);
-
-  // Apply highlights: fetch valid region ids then recolor highlighted regions
+  // Apply highlights
   const regions = await fetch('data/regions.json').then((r) => r.json());
   const validIds = new Set(regions.map((r) => r.id));
   const { set, unknown } = buildHighlightSet(highlights, validIds);
   if (unknown.length) console.warn('[highlights] unknown region ids ignored:', unknown);
   highlightSet = set;
-  applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, set, HIGHLIGHT_COLOR);
+  applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, obj.baseOpacity, set, HIGHLIGHT_COLOR, 0.9);
 
   labelLayer = createLabelLayer({
     overlayEl,
@@ -119,14 +116,15 @@ async function loadGlobe() {
 }
 
 function animate() {
-  const now = performance.now();
-  if (idle.shouldAutoRotate(now)) root.rotation.y += 0.0009;
+  // Auto-rotate at ~70% of original speed; pause ONLY while left mouse is down
+  if (!leftDown) root.rotation.y += 0.00027;
   controls.update();
   renderer.render(scene, camera);
   if (labelLayer) labelLayer.update(camera, root, window.innerWidth, window.innerHeight, camera.position.length());
 
-  if (globe && globe.points.material.userData.shader) {
-    globe.points.material.userData.shader.uniforms.uCamDist.value = camera.position.length();
+  // Update ShaderMaterial uniform for depth fade
+  if (globe) {
+    globe.points.material.uniforms.uCamDist.value = camera.position.length();
   }
 
   if (globe && vertexRegion) {

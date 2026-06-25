@@ -5,7 +5,7 @@ import { latLonToVector3 } from './geo.js';
 const CATEGORY_STYLE = {
   coast:  { size: 2.6, opacity: 0.85 },
   land:   { size: 1.8, opacity: 0.30 },
-  border: { size: 1.8, opacity: 0.45 },
+  border: { size: 2.0, opacity: 0.50 },
 };
 const CATEGORY_FALLBACK = { size: 1.8, opacity: 0.4 };
 
@@ -60,6 +60,7 @@ export function createPointsObject(points, radius, theme) {
     uniforms: {
       uCamDist:   { value: 2.4 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+      uRefDist:   { value: 1.4 },
     },
     transparent: true,
     depthWrite: false,
@@ -69,6 +70,7 @@ export function createPointsObject(points, radius, theme) {
       attribute vec3 color;
       uniform float uCamDist;
       uniform float uPixelRatio;
+      uniform float uRefDist;
       varying float vDepth;
       varying float vOpacity;
       varying vec3 vColor;
@@ -77,7 +79,8 @@ export function createPointsObject(points, radius, theme) {
         vDepth = mv.z + uCamDist;     // ~+1 near pole, ~-1 far pole (radius 1)
         vOpacity = aOpacity;
         vColor = color;
-        gl_PointSize = aSize * uPixelRatio;
+        float atten = uRefDist / max(-mv.z, 0.1);
+        gl_PointSize = aSize * uPixelRatio * atten;
         gl_Position = projectionMatrix * mv;
       }
     `,

@@ -1,7 +1,7 @@
 # Lanaforge Atlas — project context for Claude
 
 Minimalist, single-page **transparent dot-matrix 3D globe** that highlights the world
-regions where the author met people. Inspired by https://www.sergiomusel.com/travelmap.
+regions where the author met people.
 (Originally prototyped under a different name; the project is now **Lanaforge Atlas** — no
 other product name should appear anywhere.)
 
@@ -100,8 +100,10 @@ own dots turn orange `#ff5a1f` AND opacity is boosted to ~0.9 so it reads over f
 ## Tunable visual knobs
 `CATEGORY_STYLE` sizes/opacities (`src/globe.js`) · dot spacings in `generatePoints` (`scripts/lib/points.mjs`,
 re-run `npm run data` after) · depth-fade floor `mix(0.25,1.0,…)` in the fragment shader
-(`src/globe.js`) · highlight opacity (`applyHighlights(..., 0.9)` in `main.js`) · rotation speed
-`0.00027` and raycaster `Points.threshold = 0.012` (`src/main.js`).
+(`src/globe.js`) · **dot size attenuation** `uRefDist` uniform (`src/globe.js`, default `1.4`): dots are
+world-anchored (perspective `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`) so they grow on zoom-in;
+lower `uRefDist` = smaller dots overall · highlight opacity (`applyHighlights(..., 0.9)` in `main.js`) ·
+rotation speed `0.00027` and raycaster `Points.threshold = 0.012` (`src/main.js`).
 
 ## Status
 v1 (14-country, square contour/fill dots, border lines) shipped, then revised to **v2** (this doc):

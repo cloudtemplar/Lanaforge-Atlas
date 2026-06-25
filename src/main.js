@@ -7,6 +7,12 @@ import { createLabelLayer, createCursorLabel } from './labels.js';
 import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
 
+// --- Module-scoped refs for recolor ----------------------------------------
+let globe = null;
+let loadedPoints = null;
+let bordersObj = null;
+let highlightSet = null;
+
 // --- Theme setup -----------------------------------------------------------
 let THEME;
 const themeCtl = createThemeController({
@@ -18,16 +24,9 @@ const themeCtl = createThemeController({
 THEME = themeCtl.colors();
 document.getElementById('theme-toggle').addEventListener('click', () => themeCtl.toggle());
 
-// --- Module-scoped refs for recolor ----------------------------------------
-let globe = null;
-let loadedPoints = null;
-let bordersObj = null;
-let highlightSet = null;
-
 function recolorGlobe(colors) {
   if (!globe || !loadedPoints) return;
   const base = new THREE.Color(colors.dot);
-  const colorAttr = globe.geometry.getAttribute('color');
   for (let i = 0; i < loadedPoints.length; i++) {
     const k = TIER_INTENSITY[loadedPoints[i].tier] ?? 0.6;
     globe.baseColors[i * 3]     = base.r * k;
@@ -53,6 +52,12 @@ let pointerPx = { x: 0, y: 0 };
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  pointerPx = { x: e.clientX, y: e.clientY };
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+});
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);

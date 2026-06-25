@@ -1,15 +1,45 @@
 import * as THREE from 'three';
 import { GLOBE_RADIUS, HIGHLIGHT_COLOR } from './config.js';
-import { createPointsObject, createBordersObject } from './globe.js';
+import { createPointsObject, createBordersObject, TIER_INTENSITY } from './globe.js';
 import { buildHighlightSet, applyHighlights } from './highlight.js';
 import { createControls, makeIdleAutoRotate } from './controls.js';
 import { createLabelLayer, createCursorLabel } from './labels.js';
+import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
 
-const THEME = { bg: '#0d0d0f', dot: '#f2f2f2', border: '#555', text: '#f2f2f2' };
+// --- Theme setup -----------------------------------------------------------
+let THEME;
+const themeCtl = createThemeController({
+  onChange: (colors) => {
+    THEME = colors;
+    if (globe) recolorGlobe(colors);
+  },
+});
+THEME = themeCtl.colors();
+document.getElementById('theme-toggle').addEventListener('click', () => themeCtl.toggle());
 
-let labelLayer = null;
+// --- Module-scoped refs for recolor ----------------------------------------
 let globe = null;
+let loadedPoints = null;
+let bordersObj = null;
+let highlightSet = null;
+
+function recolorGlobe(colors) {
+  if (!globe || !loadedPoints) return;
+  const base = new THREE.Color(colors.dot);
+  const colorAttr = globe.geometry.getAttribute('color');
+  for (let i = 0; i < loadedPoints.length; i++) {
+    const k = TIER_INTENSITY[loadedPoints[i].tier] ?? 0.6;
+    globe.baseColors[i * 3]     = base.r * k;
+    globe.baseColors[i * 3 + 1] = base.g * k;
+    globe.baseColors[i * 3 + 2] = base.b * k;
+  }
+  applyHighlights(globe.geometry, globe.regionIndexMap, globe.baseColors, highlightSet || new Set(), HIGHLIGHT_COLOR);
+  if (bordersObj) bordersObj.material.color.set(colors.border);
+}
+
+// --- Scene setup -----------------------------------------------------------
+let labelLayer = null;
 let vertexRegion = null;
 let idToName = null;
 
@@ -47,16 +77,20 @@ controls.addEventListener('change', () => idle.onInteract(performance.now()));
 
 async function loadGlobe() {
   const data = await fetch('data/points.json').then((r) => r.json());
+  loadedPoints = data.points;
   const obj = createPointsObject(data.points, GLOBE_RADIUS, THEME);
   root.add(obj.points);
+
   const borderData = await fetch('data/borders.json').then((r) => r.json());
-  root.add(createBordersObject(borderData.segments, GLOBE_RADIUS, THEME));
+  bordersObj = createBordersObject(borderData.segments, GLOBE_RADIUS, THEME);
+  root.add(bordersObj);
 
   // Apply highlights: fetch valid region ids then recolor highlighted regions
   const regions = await fetch('data/regions.json').then((r) => r.json());
   const validIds = new Set(regions.map((r) => r.id));
   const { set, unknown } = buildHighlightSet(highlights, validIds);
   if (unknown.length) console.warn('[highlights] unknown region ids ignored:', unknown);
+  highlightSet = set;
   applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, set, HIGHLIGHT_COLOR);
 
   labelLayer = createLabelLayer({
@@ -77,13 +111,6 @@ async function loadGlobe() {
   }
   vertexRegion = vr;
   globe = obj;
-
-  // Register pointermove after globe is loaded (renderer.domElement exists from start).
-  renderer.domElement.addEventListener('pointermove', (e) => {
-    pointerPx = { x: e.clientX, y: e.clientY };
-    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  });
 }
 
 function animate() {

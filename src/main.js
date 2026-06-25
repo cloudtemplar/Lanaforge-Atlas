@@ -39,4 +39,4 @@ function animate() {
 
 // Start rendering immediately (globe loads asynchronously)
 animate();
-loadGlobe();
+loadGlobe().catch((err) => console.error('[globe] failed to load points:', err));

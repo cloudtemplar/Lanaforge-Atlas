@@ -47,3 +47,18 @@ export function createPointsObject(points, radius, theme) {
   const pointsObj = new THREE.Points(geometry, material);
   return { points: pointsObj, geometry, regionIndexMap, baseColors };
 }
+
+export function createBordersObject(segments, radius, theme) {
+  const positions = new Float32Array(segments.length * 3);
+  for (let i = 0; i < segments.length; i++) {
+    const [lat, lon] = segments[i];
+    const v = latLonToVector3(lat, lon, radius * 1.001); // a hair above the dots
+    positions[i * 3] = v.x; positions[i * 3 + 1] = v.y; positions[i * 3 + 2] = v.z;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.LineBasicMaterial({
+    color: new THREE.Color(theme.border), transparent: true, opacity: 0.35, depthWrite: false,
+  });
+  return new THREE.LineSegments(geometry, material);
+}

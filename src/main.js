@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLOBE_RADIUS } from './config.js';
-import { createPointsObject } from './globe.js';
+import { createPointsObject, createBordersObject } from './globe.js';
 
 const THEME = { bg: '#0d0d0f', dot: '#f2f2f2', border: '#555', text: '#f2f2f2' };
 
@@ -28,6 +28,8 @@ async function loadGlobe() {
   const data = await fetch('data/points.json').then((r) => r.json());
   const obj = createPointsObject(data.points, GLOBE_RADIUS, THEME);
   root.add(obj.points);
+  const borderData = await fetch('data/borders.json').then((r) => r.json());
+  root.add(createBordersObject(borderData.segments, GLOBE_RADIUS, THEME));
   return obj;
 }
 

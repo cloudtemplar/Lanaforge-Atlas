@@ -46,4 +46,39 @@ describe('generateContourPoints', () => {
     expect(contour.length).toBeGreaterThan(10);
     expect(fill.length).toBeGreaterThan(10);
   });
+
+  it('point count is driven by perimeter/stepDeg, not source vertex count (arc-length decoupling)', () => {
+    // Build a 20x20-degree square centered at origin two ways:
+    // (a) coarse: 4 corners only
+    const coarseRing = [[-10,-10],[10,-10],[10,10],[-10,10],[-10,-10]];
+    // (b) dense: each of the 4 edges subdivided into 50 collinear segments (~200 vertices)
+    function subdivideSide(x1, y1, x2, y2, n) {
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        pts.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]);
+      }
+      return pts;
+    }
+    const n = 50;
+    const denseRing = [
+      ...subdivideSide(-10,-10,  10,-10, n),
+      ...subdivideSide( 10,-10,  10, 10, n),
+      ...subdivideSide( 10, 10, -10, 10, n),
+      ...subdivideSide(-10, 10, -10,-10, n),
+      [-10,-10], // close ring
+    ];
+
+    const coarseFeature = [{ id: 'C1', geometry: { type: 'Polygon', coordinates: [coarseRing] } }];
+    const denseFeature  = [{ id: 'D1', geometry: { type: 'Polygon', coordinates: [denseRing]  } }];
+
+    const stepDeg = 1;
+    const coarseCount = generateContourPoints(coarseFeature, stepDeg).length;
+    const denseCount  = generateContourPoints(denseFeature,  stepDeg).length;
+
+    // Both should yield approximately perimeter/stepDeg points.
+    // Perimeter of the square is ~80 degrees (4 sides × 20 deg each).
+    // Allow ±3 point tolerance.
+    expect(Math.abs(coarseCount - denseCount)).toBeLessThanOrEqual(3);
+  });
 });

@@ -67,19 +67,37 @@ export function generateFillPoints(index, stepDeg) {
   return out;
 }
 
+// Great-circle distance in degrees between two lon/lat points (haversine).
+function segDistDeg(aLon, aLat, bLon, bLat) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat), dLon = toRad(bLon - aLon);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return (2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s)) * 180) / Math.PI;
+}
+
 // Dense outline points sampled along every ring of every region polygon.
+// Arc-length resampling: emits one dot every stepDeg of great-circle distance
+// along the concatenated perimeter, independent of source vertex density.
 export function generateContourPoints(features, stepDeg) {
   const out = [];
   const emitRing = (ring, id) => {
+    if (ring.length < 2) return;
+    out.push({ lon: ring[0][0], lat: ring[0][1], regionId: id, tier: 'contour' });
+    let acc = 0; // distance accumulated since the last emitted point
     for (let i = 0; i < ring.length - 1; i++) {
       const [lon1, lat1] = ring[i];
       const [lon2, lat2] = ring[i + 1];
-      const segLen = Math.hypot(lon2 - lon1, lat2 - lat1);
-      const n = Math.max(1, Math.round(segLen / stepDeg));
-      for (let k = 0; k < n; k++) {
-        const t = k / n;
+      const d = segDistDeg(lon1, lat1, lon2, lat2);
+      if (d === 0) continue;
+      let consumed = 0; // distance along THIS edge already passed
+      while (acc + (d - consumed) >= stepDeg) {
+        const advance = stepDeg - acc;
+        consumed += advance;
+        const t = consumed / d;
         out.push({ lon: lon1 + (lon2 - lon1) * t, lat: lat1 + (lat2 - lat1) * t, regionId: id, tier: 'contour' });
+        acc = 0;
       }
+      acc += (d - consumed);
     }
   };
   const walk = (coords, id, depth) => {
@@ -97,7 +115,7 @@ export function generateContourPoints(features, stepDeg) {
 export function generatePoints(features) {
   const index = buildRegionIndex(features);
   return [
-    ...generateContourPoints(features, 0.6),
-    ...generateFillPoints(index, 1.8),
+    ...generateContourPoints(features, 0.5),
+    ...generateFillPoints(index, 1.0),
   ];
 }

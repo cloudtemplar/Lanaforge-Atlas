@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { GLOBE_RADIUS } from './config.js';
+import { GLOBE_RADIUS, HIGHLIGHT_COLOR } from './config.js';
 import { createPointsObject, createBordersObject } from './globe.js';
+import { buildHighlightSet, applyHighlights } from './highlight.js';
+import highlights from '../data/highlights.json';
 
 const THEME = { bg: '#0d0d0f', dot: '#f2f2f2', border: '#555', text: '#f2f2f2' };
 
@@ -30,6 +32,14 @@ async function loadGlobe() {
   root.add(obj.points);
   const borderData = await fetch('data/borders.json').then((r) => r.json());
   root.add(createBordersObject(borderData.segments, GLOBE_RADIUS, THEME));
+
+  // Apply highlights: fetch valid region ids then recolor highlighted regions
+  const regions = await fetch('data/regions.json').then((r) => r.json());
+  const validIds = new Set(regions.map((r) => r.id));
+  const { set, unknown } = buildHighlightSet(highlights, validIds);
+  if (unknown.length) console.warn('[highlights] unknown region ids ignored:', unknown);
+  applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, set, HIGHLIGHT_COLOR);
+
   return obj;
 }
 

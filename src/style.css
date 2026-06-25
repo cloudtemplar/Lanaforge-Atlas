@@ -11,3 +11,19 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
   background: transparent; border: 1px solid var(--text); color: var(--text);
   width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;
 }
+
+.people-list {
+  pointer-events: auto;
+  text-align: center;
+  color: var(--text);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+.people-list .region-name { font-weight: 600; letter-spacing: 0.04em; font-size: 14px; }
+.people-list ul { list-style: none; }
+.people-list .more {
+  margin-top: 2px; background: transparent; border: none; color: var(--text);
+  opacity: 0.7; cursor: pointer; font-family: inherit; font-size: 12px;
+}

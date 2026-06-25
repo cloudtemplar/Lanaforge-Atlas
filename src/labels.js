@@ -1,0 +1,133 @@
+import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS } from './config.js';
+import { latLonToVector3, vector3ToScreen } from './geo.js';
+
+export function zoomTier(d) {
+  if (d > TIER_FAR) return 'far';
+  if (d < TIER_NEAR) return 'near';
+  return 'medium';
+}
+
+export function truncateList(names, limit = 5) {
+  const sorted = [...names].sort((a, b) => a.localeCompare(b));
+  const shown = sorted.slice(0, limit);
+  return { shown, total: sorted.length, hiddenCount: Math.max(0, sorted.length - limit) };
+}
+
+function overlaps(a, b) {
+  return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+}
+
+// Greedy: keep highest priority first, drop lower-priority boxes overlapping a kept one.
+export function cullCollisions(candidates) {
+  const sorted = [...candidates].sort((a, b) => b.priority - a.priority);
+  const kept = [];
+  const keptIdx = new Set();
+  for (const c of sorted) {
+    if (kept.some((k) => overlaps(k, c))) continue;
+    kept.push(c);
+    keptIdx.add(c.index);
+  }
+  return keptIdx;
+}
+
+export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByRegion }) {
+  const active = regions.filter((r) => highlightSet.has(r.id));
+
+  // One list element per highlighted region, reused across frames (avoids rebuilding DOM each frame).
+  const nodes = new Map();
+  for (const r of active) {
+    const el = document.createElement('div');
+    el.className = 'people-list';
+    el.style.position = 'absolute';
+    overlayEl.appendChild(el);
+    nodes.set(r.id, el);
+  }
+
+  function buildListHTML(r, allNames) {
+    const { shown, total, hiddenCount } = truncateList(allNames);
+    const items = shown.map((n) => `<li>${n}</li>`).join('');
+    const more = hiddenCount > 0
+      ? `<button class="more" data-region="${r.id}">+${hiddenCount} more (${total})</button>` : '';
+    return `<div class="region-name">${r.name}</div><ul>${items}</ul>${more}`;
+  }
+
+  // Track which elements have had their DOM built and which are fully expanded.
+  const builtSet = new Set();
+  const expanded = new Set();
+
+  // Delegate expand-click to the overlay element (single listener, avoids per-node listeners).
+  overlayEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button.more');
+    if (!btn) return;
+    const regionId = btn.dataset.region;
+    expanded.add(regionId);
+    const r = active.find((x) => x.id === regionId);
+    if (!r) return;
+    const el = nodes.get(r.id);
+    if (!el) return;
+    const allNames = (peopleByRegion[r.id] || []).slice().sort((a, b) => a.localeCompare(b));
+    const ul = el.querySelector('ul');
+    if (ul) ul.innerHTML = allNames.map((n) => `<li>${n}</li>`).join('');
+    btn.remove();
+  });
+
+  function update(camera, root, width, height, cameraDistance) {
+    const tier = zoomTier(cameraDistance);
+
+    // Far tier: hide everything, no projection needed.
+    if (tier === 'far') {
+      for (const el of nodes.values()) el.style.display = 'none';
+      return;
+    }
+
+    // Project centroids; build collision candidates for on-screen, front-facing regions.
+    const candidates = [];
+    const screenById = new Map();
+
+    for (const r of active) {
+      const local = latLonToVector3(r.centroid.lat, r.centroid.lon, GLOBE_RADIUS);
+      const world = local.clone().applyMatrix4(root.matrixWorld);
+      const s = vector3ToScreen(world, camera, width, height);
+      if (!s.visible || s.x < 0 || s.y < 0 || s.x > width || s.y > height) {
+        screenById.set(r.id, null);
+        continue;
+      }
+      screenById.set(r.id, s);
+      const count = (peopleByRegion[r.id] || []).length;
+      // Estimate bounding box height: region name row + up to 5 name rows.
+      const w = 130;
+      const h = 20 + Math.min(count, 5) * 16 + (count > 5 ? 18 : 0);
+      // Priority: more people = more interesting; ties broken by region id (stable).
+      candidates.push({ index: r.id, x: s.x - w / 2, y: s.y - h / 2, w, h, priority: count + 1 });
+    }
+
+    // Near tier: show all visible labels; medium: cull collisions.
+    const kept = tier === 'near'
+      ? new Set(candidates.map((c) => c.index))
+      : cullCollisions(candidates);
+
+    for (const r of active) {
+      const el = nodes.get(r.id);
+      const s = screenById.get(r.id);
+
+      if (!s || !kept.has(r.id)) {
+        el.style.display = 'none';
+        continue;
+      }
+
+      // Build DOM once; if already expanded don't re-render (would remove expanded names).
+      if (!builtSet.has(r.id)) {
+        const allNames = peopleByRegion[r.id] || [];
+        el.innerHTML = buildListHTML(r, allNames);
+        builtSet.add(r.id);
+      }
+
+      el.style.display = 'block';
+      el.style.left = `${Math.round(s.x)}px`;
+      el.style.top = `${Math.round(s.y)}px`;
+      el.style.transform = 'translate(-50%, -50%)';
+    }
+  }
+
+  return { update };
+}

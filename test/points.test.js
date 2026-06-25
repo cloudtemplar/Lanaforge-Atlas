@@ -1,16 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { buildRegionIndex, assignRegion, generateFillPoints, generateContourPoints } from '../scripts/lib/points.mjs';
+import {
+  buildRegionIndex, assignRegion, assignRegionNudged,
+  generateLandPoints, generateCoastPoints, generateBorderPoints,
+} from '../scripts/lib/points.mjs';
 
-const square = (cx, cy, r=10) => ({
+const square = (cx, cy, r = 10) => ({
   type: 'Polygon',
-  coordinates: [[[cx-r,cy-r],[cx+r,cy-r],[cx+r,cy+r],[cx-r,cy+r],[cx-r,cy-r]]],
+  coordinates: [[[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + r], [cx - r, cy + r], [cx - r, cy - r]]],
 });
 const features = [
-  { id: 'AA', geometry: square(0, 0, 10) },     // covers lon/lat in [-10,10]
-  { id: 'BB', geometry: square(40, 40, 5) },    // covers lon/lat in [35,45]
+  { id: 'AA', geometry: square(0, 0, 10) },   // covers lon/lat in [-10,10]
+  { id: 'BB', geometry: square(40, 40, 5) },  // covers lon/lat in [35,45]
 ];
 const index = buildRegionIndex(features);
 
+const line = (coords, props = {}) => ({
+  type: 'Feature',
+  properties: props,
+  geometry: { type: 'LineString', coordinates: coords },
+});
+
+// ---------------------------------------------------------------------------
 describe('assignRegion', () => {
   it('returns the region containing a point', () => {
     expect(assignRegion(index, 0, 0)).toBe('AA');
@@ -21,64 +31,111 @@ describe('assignRegion', () => {
   });
 });
 
-describe('generateFillPoints', () => {
-  const pts = generateFillPoints(index, 2);
-  it('only emits points inside regions, tagged fill', () => {
+// ---------------------------------------------------------------------------
+describe('assignRegionNudged', () => {
+  it('resolves a point just outside a square boundary to that square', () => {
+    // AA covers [-10,10] x [-10,10]. A point at lon=10.05 is just beyond the edge
+    // (within 0.08°) — nudged probe should hit AA.
+    expect(assignRegionNudged(index, 10.05, 0)).toBe('AA');
+  });
+  it('returns null for a far-away ocean point', () => {
+    expect(assignRegionNudged(index, 100, 0)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('generateLandPoints', () => {
+  const pts = generateLandPoints(index, 2);
+  it('only emits points inside regions, tagged category:land with regionId set', () => {
     expect(pts.length).toBeGreaterThan(0);
     for (const p of pts) {
       expect(['AA', 'BB']).toContain(p.regionId);
-      expect(p.tier).toBe('fill');
+      expect(p.category).toBe('land');
     }
   });
 });
 
-describe('generateContourPoints', () => {
-  const pts = generateContourPoints(features, 1);
-  it('emits contour points tagged with their region and tier', () => {
+// ---------------------------------------------------------------------------
+describe('generateCoastPoints', () => {
+  const coastlineFC = {
+    type: 'FeatureCollection',
+    // A ~10-degree line inside region AA
+    features: [line([[-5, 0], [5, 0]])],
+  };
+
+  it('emits points tagged category:coast', () => {
+    const pts = generateCoastPoints(coastlineFC, index, 1);
     expect(pts.length).toBeGreaterThan(0);
-    expect(pts.every(p => p.tier === 'contour')).toBe(true);
-    expect(pts.some(p => p.regionId === 'AA')).toBe(true);
-  });
-  it('is denser than fill for the same area', () => {
-    const fill = generateFillPoints(index, 1);
-    const contour = generateContourPoints(features, 1);
-    // contour traces perimeters at fine spacing; expect a healthy count
-    expect(contour.length).toBeGreaterThan(10);
-    expect(fill.length).toBeGreaterThan(10);
-  });
-
-  it('point count is driven by perimeter/stepDeg, not source vertex count (arc-length decoupling)', () => {
-    // Build a 20x20-degree square centered at origin two ways:
-    // (a) coarse: 4 corners only
-    const coarseRing = [[-10,-10],[10,-10],[10,10],[-10,10],[-10,-10]];
-    // (b) dense: each of the 4 edges subdivided into 50 collinear segments (~200 vertices)
-    function subdivideSide(x1, y1, x2, y2, n) {
-      const pts = [];
-      for (let i = 0; i < n; i++) {
-        const t = i / n;
-        pts.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]);
-      }
-      return pts;
+    for (const p of pts) {
+      expect(p.category).toBe('coast');
     }
-    const n = 50;
-    const denseRing = [
-      ...subdivideSide(-10,-10,  10,-10, n),
-      ...subdivideSide( 10,-10,  10, 10, n),
-      ...subdivideSide( 10, 10, -10, 10, n),
-      ...subdivideSide(-10, 10, -10,-10, n),
-      [-10,-10], // close ring
-    ];
+  });
 
-    const coarseFeature = [{ id: 'C1', geometry: { type: 'Polygon', coordinates: [coarseRing] } }];
-    const denseFeature  = [{ id: 'D1', geometry: { type: 'Polygon', coordinates: [denseRing]  } }];
+  it('arc-length spacing is independent of source vertex count', () => {
+    function subdivide(x1, y1, x2, y2, n) {
+      const coords = [];
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        coords.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]);
+      }
+      return coords;
+    }
+
+    const coarseFC = {
+      type: 'FeatureCollection',
+      features: [line([[-5, 0], [5, 0]])],
+    };
+    const denseFC = {
+      type: 'FeatureCollection',
+      features: [line(subdivide(-5, 0, 5, 0, 50))],
+    };
 
     const stepDeg = 1;
-    const coarseCount = generateContourPoints(coarseFeature, stepDeg).length;
-    const denseCount  = generateContourPoints(denseFeature,  stepDeg).length;
-
-    // Both should yield approximately perimeter/stepDeg points.
-    // Perimeter of the square is ~80 degrees (4 sides × 20 deg each).
-    // Allow ±3 point tolerance.
+    const coarseCount = generateCoastPoints(coarseFC, index, stepDeg).length;
+    const denseCount  = generateCoastPoints(denseFC, index, stepDeg).length;
+    // Both trace the same ~10° line — counts must match within ±3 points.
     expect(Math.abs(coarseCount - denseCount)).toBeLessThanOrEqual(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('generateBorderPoints', () => {
+  const countryLines = {
+    type: 'FeatureCollection',
+    features: [line([[0, 0], [1, 1], [2, 2]])],
+  };
+  const stateLines = {
+    type: 'FeatureCollection',
+    features: [
+      line([[10, 10], [11, 11]], { iso_a2: 'US' }),    // KEPT (US in STATE_LEVEL)
+      line([[20, 20], [21, 21]], { iso_a2: 'PT' }),    // DROPPED
+      line([[30, 30], [31, 31]], { ADM0_A3: 'JPN' }), // KEPT (JP in STATE_LEVEL)
+      line([[40, 40], [41, 41]], { ADM0_A3: 'PRT' }), // DROPPED
+    ],
+  };
+
+  const pts = generateBorderPoints(countryLines, stateLines, 0.5);
+
+  it('all output tagged category:border with regionId null', () => {
+    expect(pts.length).toBeGreaterThan(0);
+    for (const p of pts) {
+      expect(p.category).toBe('border');
+      expect(p.regionId).toBeNull();
+    }
+  });
+
+  it('includes all country-line points', () => {
+    // Country line: lon 0-2, lat 0-2 — must have points in that bbox.
+    expect(pts.some(p => p.lon >= 0 && p.lon <= 2 && p.lat >= 0 && p.lat <= 2)).toBe(true);
+  });
+
+  it('keeps iso_a2:US (KEPT) and drops iso_a2:PT (DROPPED)', () => {
+    expect(pts.some(p => p.lon >= 10 && p.lon <= 11 && p.lat >= 10 && p.lat <= 11)).toBe(true);
+    expect(pts.some(p => p.lon >= 20 && p.lon <= 21 && p.lat >= 20 && p.lat <= 21)).toBe(false);
+  });
+
+  it('keeps ADM0_A3:JPN (KEPT) and drops ADM0_A3:PRT (DROPPED)', () => {
+    expect(pts.some(p => p.lon >= 30 && p.lon <= 31 && p.lat >= 30 && p.lat <= 31)).toBe(true);
+    expect(pts.some(p => p.lon >= 40 && p.lon <= 41 && p.lat >= 40 && p.lat <= 41)).toBe(false);
   });
 });

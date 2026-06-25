@@ -1,0 +1,13 @@
+:root {
+  --bg: #0d0d0f;
+  --text: #f2f2f2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); }
+#scene { display: block; width: 100vw; height: 100vh; }
+#overlay { position: fixed; inset: 0; pointer-events: none; font-family: 'Rajdhani', sans-serif; }
+#theme-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 10;
+  background: transparent; border: 1px solid var(--text); color: var(--text);
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;
+}

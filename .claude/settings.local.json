@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"C:\\\\Users\\\\Murilo\\\\Documents\\\\dev\\\\globe\")",
+      "Bash(git log *)"
+    ]
+  }
+}

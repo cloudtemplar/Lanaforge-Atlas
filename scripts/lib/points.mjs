@@ -97,7 +97,7 @@ export function generateContourPoints(features, stepDeg) {
 export function generatePoints(features) {
   const index = buildRegionIndex(features);
   return [
-    ...generateContourPoints(features, 0.45),
-    ...generateFillPoints(index, 1.4),
+    ...generateContourPoints(features, 0.6),
+    ...generateFillPoints(index, 1.8),
   ];
 }

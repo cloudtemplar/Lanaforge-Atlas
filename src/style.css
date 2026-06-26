@@ -15,10 +15,51 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
   pointer-events: none;
 }
 #overlay { position: fixed; inset: 0; pointer-events: none; font-family: 'Rajdhani', sans-serif; }
+/* Borderless icon-only theme toggle: a sun/moon "coin" that flips on rotateY when the theme
+   changes (driven by :root[data-theme]). The button only handles the hover/opacity so it never
+   fights the inner .flip rotation. */
 #theme-toggle {
   position: fixed; top: var(--page-pad); right: var(--page-pad); z-index: 10;
-  background: transparent; border: 1px solid var(--text); color: var(--text);
-  width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;
+  display: grid; place-items: center;
+  width: 36px; height: 36px; padding: 0;
+  background: transparent; border: none; color: var(--text); cursor: pointer;
+  perspective: 400px;
+  opacity: 0.85;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+#theme-toggle:hover { opacity: 1; transform: scale(1.08); }
+#theme-toggle:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; border-radius: 50%; }
+
+#theme-toggle .flip {
+  position: relative; width: 24px; height: 24px;
+  transform-style: preserve-3d;
+  transition: transform 350ms ease;
+}
+/* Each face is a DIV wrapper, NOT the <svg> itself: Firefox doesn't honour
+   backface-visibility on <svg> elements, so the hidden back face (the sun) bled
+   through over the moon. Putting backface-visibility on a div fixes it. */
+#theme-toggle .face {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+#theme-toggle .face svg { display: block; width: 24px; height: 24px; }
+#theme-toggle .face.moon { transform: rotateY(180deg); } /* pre-flipped so it faces front when the coin turns */
+:root[data-theme="dark"] #theme-toggle .flip { transform: rotateY(180deg); }
+
+/* Reduced-motion: drop the 3D spin (the motion sensitive users avoid) but still animate —
+   a gentle opacity crossfade between the two faces, so the toggle is never dead-static. */
+@media (prefers-reduced-motion: reduce) {
+  /* both selectors so the dark-mode rotateY rule (higher specificity) can't re-introduce the spin */
+  #theme-toggle .flip,
+  :root[data-theme="dark"] #theme-toggle .flip { transform: none; transition: none; }
+  #theme-toggle .face {
+    backface-visibility: visible; -webkit-backface-visibility: visible;
+    transition: opacity 250ms ease;
+  }
+  #theme-toggle .face.sun, #theme-toggle .face.moon { transform: none; }
+  #theme-toggle .face.moon { opacity: 0; }
+  :root[data-theme="dark"] #theme-toggle .face.sun { opacity: 0; }
+  :root[data-theme="dark"] #theme-toggle .face.moon { opacity: 1; }
 }
 
 .region-pill {

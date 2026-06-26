@@ -18,6 +18,7 @@ export function createThemeController({ onChange }) {
     root.style.setProperty('--bg', c.bg);
     root.style.setProperty('--text', c.text);
     root.style.setProperty('--dot', c.dot); // marker person-icon colour (matches the dots)
+    root.dataset.theme = theme; // CSS source of truth for the sun/moon flip toggle
     onChange?.(c);
   }
   apply();

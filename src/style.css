@@ -1,12 +1,13 @@
 :root {
   --bg: #0d0d0f;
   --text: #f2f2f2;
+  --page-pad: 28px; /* inset of the fixed chrome (logo, theme toggle) from the page edge */
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; overflow: hidden; background: var(--bg); }
 #scene { display: block; width: 100vw; height: 100vh; }
 #logo {
-  position: fixed; top: 16px; left: 18px; z-index: 10;
+  position: fixed; top: var(--page-pad); left: var(--page-pad); z-index: 10;
   width: min(42vw, 168px); aspect-ratio: 1055 / 729;
   background-color: var(--text);
   -webkit-mask: url(/logo-lanaforge.png) no-repeat left center / contain;
@@ -15,7 +16,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 }
 #overlay { position: fixed; inset: 0; pointer-events: none; font-family: 'Rajdhani', sans-serif; }
 #theme-toggle {
-  position: fixed; top: 16px; right: 16px; z-index: 10;
+  position: fixed; top: var(--page-pad); right: var(--page-pad); z-index: 10;
   background: transparent; border: 1px solid var(--text); color: var(--text);
   width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;
 }

@@ -66,8 +66,6 @@ npm run build          # = npm run data + vite build  ->  dist/
 npm run preview        # serve dist/ locally to sanity-check
 ```
 
-Deploy the `dist/` folder to any static host (GitHub Pages / Vercel / Netlify).
-
 > `npm run build` runs `npm run data` for you, but `data` needs the downloaded source in
 > `scripts/geo-src/`. If it's missing, run `npm run fetch-geo` first (otherwise build fails with
 > ENOENT).

@@ -50,6 +50,11 @@ categories (each point tagged `category`); per-category size/opacity live in `CA
 - **border** — intra-continental country borders + the 4 countries' state borders; sized like land
   but a touch more opaque and **denser**, so it reads as a seam that separates neighbours (e.g.
   US/Canada). `regionId` is `null` for border dots (not highlighted).
+After generation the three categories are **thinned by hierarchy** (`thinByHierarchy` in
+`scripts/lib/points.mjs`): priority is coast > border > land, and a lower-priority dot is dropped
+when it falls within a clearance radius (degrees, in code) of an already-kept higher-priority dot,
+so the categories don't pile up in dense areas (e.g. Japan). Equal priority is never thinned —
+intra-category spacing is the generators' job. Clearance is build-time, so changes need `npm run data`.
 All islands kept (no size filter). Dots are **world-anchored** (perspective size attenuation via
 the `uRefDist` uniform in `src/globe.js`) so they grow on zoom-in. **Highlight** (= author's choice
 "B"): a highlighted region's own dots switch to `HIGHLIGHT_COLOR` (`src/config.js`) AND their opacity
@@ -77,6 +82,7 @@ dots. The highlight color is constant across themes.
 - `scripts/lib/regions.mjs` — `buildRegions(countriesFC, statesFC) → {regions, features}`.
 - `scripts/lib/points.mjs` — `buildRegionIndex`, `assignRegion`, `assignRegionNudged`,
   `generateLandPoints`, `generateCoastPoints`, `generateBorderPoints`,
+  `thinByHierarchy(coast, border, land, clearanceDeg)` (priority cull, see Dot system),
   `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`. Point =
   `{lat,lon,regionId,category}`. `ISO3_TO_ISO2` map (BRA/USA/CAN/JPN) filters state lines.
 - `scripts/lib/reference.mjs` — `buildIsoReference` → `iso-reference.md`.
@@ -112,6 +118,9 @@ dots. The highlight color is constant across themes.
 - **Dot spacing** per category — args in `generatePoints` (`scripts/lib/points.mjs`); **re-run
   `npm run data`** after (spacing is baked into `points.json`). Everything else here is runtime
   (hot-reloads in `npm run dev`).
+- **Hierarchy thinning clearance** — `clearanceDeg` arg of `thinByHierarchy` in `generatePoints`
+  (`scripts/lib/points.mjs`); bigger = more aggressive removal of lower-priority dots around
+  higher-priority ones. Build-time — **re-run `npm run data`** after.
 - **Dot size attenuation** (world-anchored growth on zoom) — `uRefDist` uniform (`src/globe.js`);
   lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
 - **Far-hemisphere fade** — the `mix(...)` floor in the fragment shader (`src/globe.js`).

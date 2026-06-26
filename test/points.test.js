@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildRegionIndex, assignRegion, assignRegionNudged,
   generateLandPoints, generateCoastPoints, generateBorderPoints,
+  thinByHierarchy,
 } from '../scripts/lib/points.mjs';
 
 const square = (cx, cy, r = 10) => ({
@@ -137,5 +138,46 @@ describe('generateBorderPoints', () => {
   it('keeps ADM0_A3:JPN (KEPT) and drops ADM0_A3:PRT (DROPPED)', () => {
     expect(pts.some(p => p.lon >= 30 && p.lon <= 31 && p.lat >= 30 && p.lat <= 31)).toBe(true);
     expect(pts.some(p => p.lon >= 40 && p.lon <= 41 && p.lat >= 40 && p.lat <= 41)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('thinByHierarchy', () => {
+  const at = (lon, lat, category) => ({ lon, lat, category, regionId: null });
+
+  it('keeps every coast dot regardless of crowding', () => {
+    const coast = [at(0, 0, 'coast'), at(0.01, 0, 'coast'), at(0.02, 0, 'coast')];
+    const out = thinByHierarchy(coast, [], [], 0.6);
+    expect(out.length).toBe(3);
+  });
+
+  it('drops a border dot near a kept coast dot, keeps a far one', () => {
+    const coast = [at(0, 0, 'coast')];
+    const border = [at(0.1, 0, 'border'), at(5, 0, 'border')];
+    const out = thinByHierarchy(coast, border, [], 0.6);
+    expect(out.some(p => p.category === 'border' && p.lon === 0.1)).toBe(false); // within clearance
+    expect(out.some(p => p.category === 'border' && p.lon === 5)).toBe(true);    // far
+  });
+
+  it('drops a land dot near either a coast or a kept border dot', () => {
+    const coast = [at(0, 0, 'coast')];
+    const border = [at(10, 0, 'border')];
+    const land = [
+      at(0.2, 0, 'land'),  // near coast -> dropped
+      at(10.2, 0, 'land'), // near kept border -> dropped
+      at(50, 0, 'land'),   // isolated -> kept
+    ];
+    const out = thinByHierarchy(coast, border, land, 0.6);
+    const lands = out.filter(p => p.category === 'land').map(p => p.lon);
+    expect(lands).toEqual([50]);
+  });
+
+  it('finds neighbours across grid-cell boundaries at high latitude', () => {
+    // longitude degrees shrink with cos(lat); a land dot 0.3° east of a coast dot
+    // at lat 70 must still be detected as within a 0.6° great-circle clearance.
+    const coast = [at(0, 70, 'coast')];
+    const land = [at(0.3, 70, 'land')];
+    const out = thinByHierarchy(coast, land.length ? [] : [], land, 0.6);
+    expect(out.some(p => p.category === 'land')).toBe(false);
   });
 });

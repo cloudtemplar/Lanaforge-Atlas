@@ -187,13 +187,65 @@ export function generateBorderPoints(countryLinesFC, stateLinesFC, stepDeg = 0.7
 }
 
 /**
- * Master point generator. Produces all three categories:
+ * Hierarchical spatial thinning. Each category has a priority
+ * (coast > border > land); a lower-priority dot is dropped when it falls within
+ * `clearanceDeg` (great-circle) of an already-kept higher-priority dot, so the
+ * categories don't pile up on top of each other in dense areas (e.g. Japan).
+ *
+ * Equal priority is never thinned here — per-category spacing is already handled
+ * by the generators. Because dots are world-anchored (their on-globe angular size
+ * is fixed and px size scales uniformly with zoom), a clearance in degrees keeps a
+ * consistent px gap at every zoom level.
+ *
+ * Implementation: a lon/lat hash grid (cell = clearanceDeg) of kept higher-priority
+ * points; each candidate is tested with an exact haversine check against neighbour
+ * cells, widening the longitude scan by 1/cos(lat) so the clearance stays circular at
+ * all latitudes. (Antimeridian wrap is not special-cased — negligible at lon ±180.)
+ */
+export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6) {
+  const grid = new Map();
+  const key = (cx, cy) => cx + ',' + cy;
+  const cellX = (lon) => Math.floor(lon / clearanceDeg);
+  const cellY = (lat) => Math.floor(lat / clearanceDeg);
+
+  const insert = (p) => {
+    const k = key(cellX(p.lon), cellY(p.lat));
+    let bucket = grid.get(k);
+    if (!bucket) grid.set(k, (bucket = []));
+    bucket.push(p);
+  };
+
+  // True when a kept (higher-priority) point lies within clearanceDeg of (lon,lat).
+  const blocked = (lon, lat) => {
+    const cx = cellX(lon), cy = cellY(lat);
+    const lonSpan = Math.ceil(1 / Math.max(Math.cos((lat * Math.PI) / 180), 0.15)) + 1;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -lonSpan; dx <= lonSpan; dx++) {
+        const bucket = grid.get(key(cx + dx, cy + dy));
+        if (!bucket) continue;
+        for (const q of bucket) {
+          if (segDistDeg(lon, lat, q.lon, q.lat) < clearanceDeg) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const kept = [];
+  for (const p of coast) { kept.push(p); insert(p); }                 // keep all
+  for (const p of border) { if (!blocked(p.lon, p.lat)) { kept.push(p); insert(p); } }
+  for (const p of land) { if (!blocked(p.lon, p.lat)) { kept.push(p); insert(p); } }
+  return kept;
+}
+
+/**
+ * Master point generator. Produces all three categories, then thins lower-priority
+ * dots away from higher-priority ones (see thinByHierarchy).
  */
 export function generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC) {
   const index = buildRegionIndex(features);
-  return [
-    ...generateCoastPoints(coastlineFC, index, 0.5),
-    ...generateLandPoints(index, 1.0),
-    ...generateBorderPoints(countryLinesFC, stateLinesFC, 0.75),
-  ];
+  const coast  = generateCoastPoints(coastlineFC, index, 0.75);
+  const land   = generateLandPoints(index, 1.1);
+  const border = generateBorderPoints(countryLinesFC, stateLinesFC, 0.85);
+  return thinByHierarchy(coast, border, land, 0.6);
 }

@@ -50,8 +50,11 @@ consumed by `generatePoints` in `scripts/lib/points.mjs`):
   a patchy half. (coast/land carry a single `regionId`.)
 After generation the three categories are **thinned by hierarchy** (`thinByHierarchy` in
 `scripts/lib/points.mjs`): priority is coast > border > land, and a lower-priority dot is dropped
-when it falls within `clearanceDeg` (great-circle) of an already-kept higher-priority dot, so the
-categories don't pile up in dense areas (e.g. Japan). Coast also thins against itself via a separate
+when it falls within a clearance radius (great-circle) of an already-kept higher-priority dot, so the
+categories don't pile up in dense areas (e.g. Japan). The clearance is split per category:
+`clearanceDeg` is how close a *border* dot may sit to a kept coast dot; `landClearanceDeg` is how
+close a *land* dot may sit to a kept coast/border dot (so land can pack tighter than borders).
+Coast also thins against itself via a separate
 `coastGapDeg` (the big coast dots must not overlap each other — coast is generated finely and this
 gap sets the even final coast spacing); border/land are not self-thinned. Thinning is build-time, so
 changes need `npm run data`. All islands kept (no size filter). Dots are **world-anchored**
@@ -61,11 +64,28 @@ changes need `npm run data`. All islands kept (no size filter). Dots are **world
 opacity-boost arg of `applyHighlights` in `main.js`) so the dots read over the faint base while
 keeping the coast > border > land opacity hierarchy. The highlight color is constant across themes.
 
+## People overlay (labels)
+HTML/CSS overlay (`src/labels.js` + `src/style.css`) listing the people met per highlighted region,
+drawn over the dots and gated by zoom tier (`zoomTier`). Per region:
+- Regions with **>= `MARKER_MIN_COUNT` names** collapse to a small **marker** (country name + a
+  `--dot`-coloured person icon + count). Click the **country name only** (the sole click target — a
+  small caret signals it) to expand the full list (country + top-5 names + "+N more"); click again to
+  collapse. The names list and icon are NOT click targets (only its own "+N more" button is). Smaller
+  regions show their list directly (no marker, not collapsible). Multiple regions expand independently;
+  an expanded marker auto-resets to collapsed when its label fades out on zoom-out.
+- Labels **fade in/out** and are **world-anchored**: size = `labelScale(viewDepth, LABEL_REF_DIST)`
+  (same semantics as the dots' `uRefDist`), so they grow on zoom-in. **No collision culling** — only
+  far-hemisphere limb + off-screen culls; every front-facing region is shown (markers separate on zoom).
+- A hover **cursor pill** (`createCursorLabel`) shows a region name under the pointer, but only at the
+  far tier (`shouldShowHoverLabel`), where the per-region markers aren't drawn.
+- admin-1 region names carry a country prefix via `STATE_COUNTRY_LABEL` (build-time, in `regions.mjs`).
+
 ## Key files
 - `src/config.js` — **the single home for all tuning/structure constants** (see "Tunable visual
   knobs"): geometry/camera (`GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR`,
   `CAMERA_START_DIST`), dot style (`CATEGORY_STYLE`, `CATEGORY_FALLBACK`, `DOT_REF_DIST`,
-  `FAR_FADE_FLOOR`), highlight (`HIGHLIGHT_COLOR`, `HIGHLIGHT_OPACITY_BOOST`), interaction
+  `FAR_FADE_FLOOR`), people overlay (`LABEL_REF_DIST`, `MARKER_MIN_COUNT`, `STATE_COUNTRY_LABEL`),
+  highlight (`HIGHLIGHT_COLOR`, `HIGHLIGHT_OPACITY_BOOST`), interaction
   (`ROTATION_SPEED`, `RAYCAST_THRESHOLD`), build-time spacing/thinning (`DOT_SPACING`, `THINNING`,
   `REGION_PROBE_NUDGE_DEG`), `STATE_LEVEL`, and `SOURCES` (5 Natural Earth URLs: admin-0 countries
   50m, admin-1 states **10m**, admin-0 boundary_lines_land 50m, admin-1 lines **10m**, coastline
@@ -77,17 +97,19 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
 - `src/highlight.js` — `buildHighlightSet`, `applyHighlights(geometry, regionIndexMap, baseColors,
   baseOpacity, set, colorHex, highlightOpacity)`.
 - `src/controls.js` — `createControls` (OrbitControls; min/max distance; pan disabled).
-- `src/labels.js` — `zoomTier`, `truncateList`, `cullCollisions`, `createLabelLayer` (people lists
-  by zoom tier + screen-space collision cull + far-hemisphere limb cull + top-5/expand),
-  `createCursorLabel` (hover pill). Names are HTML-escaped (`escapeHtml`).
+- `src/labels.js` — `zoomTier`, `truncateList`, `labelScale`, `buildListHTML`,
+  `shouldShowHoverLabel`, `createLabelLayer`, `createCursorLabel`. Builds the people overlay (see
+  "People overlay" above) — collapsible per-region markers, world-anchored fade, NO collision cull.
+  Names are HTML-escaped (`escapeHtml`).
 - `src/theme.js` — `resolveTheme`, `THEMES` (dark/light), `createThemeController` (localStorage +
-  `prefers-color-scheme` + CSS vars `--bg`/`--text`).
+  `prefers-color-scheme` + CSS vars `--bg`/`--text`/`--dot`).
 - `src/main.js` — scene/render-loop wiring (see conventions below).
-- `scripts/lib/regions.mjs` — `buildRegions(countriesFC, statesFC) → {regions, features}`.
+- `scripts/lib/regions.mjs` — `buildRegions(countriesFC, statesFC) → {regions, features}`; admin-1
+  names get a `STATE_COUNTRY_LABEL` country prefix.
 - `scripts/lib/points.mjs` — `buildRegionIndex`, `assignRegion`, `assignRegionNudged`,
   `assignRegionsNudged` (all adjacent regions, for borders), `generateLandPoints`,
   `generateCoastPoints`, `generateBorderPoints(…, index, stepDeg)` (border dots get `regionIds`),
-  `thinByHierarchy(coast, border, land, clearanceDeg, coastGapDeg)` (priority cull + coast
+  `thinByHierarchy(coast, border, land, clearanceDeg, coastGapDeg, landClearanceDeg)` (priority cull + coast
   self-spacing, see Dot system), `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`.
   Point = `{lat,lon,category}` + `regionId` (coast/land) or `regionIds` (border). `ISO3_TO_ISO2` map
   (BRA/USA/CAN) filters state lines.
@@ -96,8 +118,8 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
   **no borders.json** in v2).
 - `data/highlights.json` — AUTHOR-EDITED, committed, `{ regionId: [names] }`.
 - `public/data/` & `scripts/geo-src/` — GENERATED, gitignored.
-- `test/` — geo, regions, points, highlight, labels, labels.cursor, theme, globe.buildgeom,
-  data-validation.
+- `test/` — geo, regions, points, highlight, labels, labels.cursor, labels.lifecycle, theme,
+  globe.buildgeom, data-validation.
 
 ## Conventions & gotchas (don't relearn these the hard way)
 - **No top-level `await` in `src/main.js`** — Vite's es2020 target rejects it. Do async work
@@ -126,10 +148,10 @@ build-time scripts). Below: the config export → where it's consumed.
   `src/globe.js`. Runtime (hot-reloads in `npm run dev`).
 - **Dot spacing** per category — `DOT_SPACING` ({coast,land,border}); consumed in `generatePoints`
   (`scripts/lib/points.mjs`). **Build-time — re-run `npm run data`** (baked into `points.json`).
-- **Hierarchy thinning** — `THINNING.clearanceDeg` (cross-category) and `THINNING.coastGapDeg`
-  (coast self-spacing / non-overlap; also the de-facto coast-density knob); consumed by
-  `thinByHierarchy` in `generatePoints`. Bigger = more aggressive removal. **Build-time — re-run
-  `npm run data`.**
+- **Hierarchy thinning** — `THINNING.clearanceDeg` (border vs kept coast), `THINNING.landClearanceDeg`
+  (land vs kept coast/border; lower = land packs closer), and `THINNING.coastGapDeg` (coast
+  self-spacing / non-overlap; also the de-facto coast-density knob); consumed by `thinByHierarchy`
+  in `generatePoints`. Bigger = more aggressive removal. **Build-time — re-run `npm run data`.**
 - **Region probe nudge** — `REGION_PROBE_NUDGE_DEG`; consumed by `assignRegion*Nudged`
   (`scripts/lib/points.mjs`). **Build-time.**
 - **Dot size attenuation** (world-anchored growth on zoom) — `DOT_REF_DIST` → `uRefDist` uniform

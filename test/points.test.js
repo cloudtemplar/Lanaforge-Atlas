@@ -132,7 +132,7 @@ describe('generateBorderPoints', () => {
     features: [
       line([[10, 10], [11, 11]], { iso_a2: 'US' }),    // KEPT (US in STATE_LEVEL)
       line([[20, 20], [21, 21]], { iso_a2: 'PT' }),    // DROPPED
-      line([[30, 30], [31, 31]], { ADM0_A3: 'JPN' }), // KEPT (JP in STATE_LEVEL)
+      line([[30, 30], [31, 31]], { ADM0_A3: 'BRA' }), // KEPT (BR in STATE_LEVEL)
       line([[40, 40], [41, 41]], { ADM0_A3: 'PRT' }), // DROPPED
     ],
   };
@@ -161,7 +161,7 @@ describe('generateBorderPoints', () => {
     expect(pts.some(p => p.lon >= 20 && p.lon <= 21 && p.lat >= 20 && p.lat <= 21)).toBe(false);
   });
 
-  it('keeps ADM0_A3:JPN (KEPT) and drops ADM0_A3:PRT (DROPPED)', () => {
+  it('keeps ADM0_A3:BRA (KEPT) and drops ADM0_A3:PRT (DROPPED)', () => {
     expect(pts.some(p => p.lon >= 30 && p.lon <= 31 && p.lat >= 30 && p.lat <= 31)).toBe(true);
     expect(pts.some(p => p.lon >= 40 && p.lon <= 41 && p.lat >= 40 && p.lat <= 41)).toBe(false);
   });

@@ -112,6 +112,7 @@ Use these ids as keys in `data/highlights.json`.
 | JE | Jersey |
 | JM | Jamaica |
 | JO | Jordan |
+| JP | Japan |
 | KE | Kenya |
 | KG | Kyrgyzstan |
 | KH | Cambodia |
@@ -244,7 +245,7 @@ Use these ids as keys in `data/highlights.json`.
 
 ## Sub-regions of the state-level countries (ISO 3166-2)
 
-Parent countries: BR, US, CA, JP
+Parent countries: BR, US, CA
 
 | id | name |
 |----|------|
@@ -288,53 +289,6 @@ Parent countries: BR, US, CA, JP
 | CA-QC | Québec |
 | CA-SK | Saskatchewan |
 | CA-YT | Yukon |
-| JP-01 | Hokkaidō |
-| JP-02 | Aomori |
-| JP-03 | Iwate |
-| JP-04 | Miyagi |
-| JP-05 | Akita |
-| JP-06 | Yamagata |
-| JP-07 | Fukushima |
-| JP-08 | Ibaraki |
-| JP-09 | Tochigi |
-| JP-10 | Gunma |
-| JP-11 | Saitama |
-| JP-12 | Chiba |
-| JP-13 | Tokyo |
-| JP-14 | Kanagawa |
-| JP-15 | Niigata |
-| JP-16 | Toyama |
-| JP-17 | Ishikawa |
-| JP-18 | Fukui |
-| JP-19 | Yamanashi |
-| JP-20 | Nagano |
-| JP-21 | Gifu |
-| JP-22 | Shizuoka |
-| JP-23 | Aichi |
-| JP-24 | Mie |
-| JP-25 | Shiga |
-| JP-26 | Kyōto |
-| JP-27 | Ōsaka |
-| JP-28 | Hyōgo |
-| JP-29 | Nara |
-| JP-30 | Wakayama |
-| JP-31 | Tottori |
-| JP-32 | Shimane |
-| JP-33 | Okayama |
-| JP-34 | Hiroshima |
-| JP-35 | Yamaguchi |
-| JP-36 | Tokushima |
-| JP-37 | Kagawa |
-| JP-38 | Ehime |
-| JP-39 | Kōchi |
-| JP-40 | Fukuoka |
-| JP-41 | Saga |
-| JP-42 | Nagasaki |
-| JP-43 | Kumamoto |
-| JP-44 | Ōita |
-| JP-45 | Miyazaki |
-| JP-46 | Kagoshima |
-| JP-47 | Okinawa |
 | US-AK | Alaska |
 | US-AL | Alabama |
 | US-AR | Arkansas |

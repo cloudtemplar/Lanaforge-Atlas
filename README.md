@@ -29,7 +29,6 @@ a list of names:
 ```json
 {
   "BR-SP": ["Alice", "Bruno"],
-  "JP-13": ["Kenji"],
   "PT":    ["Diogo"]
 }
 ```
@@ -45,8 +44,8 @@ a list of names:
 
 ### Region ids (ISO 3166)
 - Country = ISO 3166-1 alpha-2: `JP`, `FR`, `PT`, …
-- Sub-region = ISO 3166-2: `BR-SP`, `US-CA`, `JP-13`, …
-- Only **4 countries are marked at state/province level** (never whole-country): **BR, US, CA, JP**.
+- Sub-region = ISO 3166-2: `BR-SP`, `US-CA`, `CA-ON`, …
+- Only **3 countries are marked at state/province level** (never whole-country): **BR, US, CA**.
   Every other country is highlighted as a whole country. Look up exact codes in `iso-reference.md`.
 
 ## When do I re-run what?

@@ -1,13 +1,8 @@
 import * as THREE from 'three';
 import { latLonToVector3 } from './geo.js';
-
-// Per-category visual style (CSS px sizes + base opacity)
-const CATEGORY_STYLE = {
-  coast:  { size: 5.0, opacity: 0.70 },
-  land:   { size: 3.3, opacity: 0.25 },
-  border: { size: 4.2, opacity: 0.60 },
-};
-const CATEGORY_FALLBACK = { size: 3.3, opacity: 0.35 };
+import {
+  CATEGORY_STYLE, CATEGORY_FALLBACK, DOT_REF_DIST, FAR_FADE_FLOOR, CAMERA_START_DIST,
+} from './config.js';
 
 export function buildPointsGeometry(points, radius) {
   const n = points.length;
@@ -61,9 +56,9 @@ export function createPointsObject(points, radius, theme) {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uCamDist:   { value: 2.4 },
+      uCamDist:   { value: CAMERA_START_DIST },
       uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-      uRefDist:   { value: 1.4 },
+      uRefDist:   { value: DOT_REF_DIST },
     },
     transparent: true,
     depthWrite: false,
@@ -95,7 +90,7 @@ export function createPointsObject(points, radius, theme) {
         vec2 d = gl_PointCoord - vec2(0.5);
         if (dot(d, d) > 0.25) discard;            // round dot
         float depthFade = smoothstep(-1.0, 1.0, vDepth);
-        float alpha = vOpacity * mix(0.25, 1.0, depthFade); // far side dimmer
+        float alpha = vOpacity * mix(${FAR_FADE_FLOOR.toFixed(2)}, 1.0, depthFade); // far side dimmer
         gl_FragColor = vec4(vColor, alpha);
       }
     `,

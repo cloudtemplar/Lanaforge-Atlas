@@ -1,16 +1,14 @@
 import * as THREE from 'three';
-import { GLOBE_RADIUS, HIGHLIGHT_COLOR } from './config.js';
+import {
+  GLOBE_RADIUS, HIGHLIGHT_COLOR, HIGHLIGHT_OPACITY_BOOST,
+  CAMERA_START_DIST, ROTATION_SPEED, RAYCAST_THRESHOLD,
+} from './config.js';
 import { createPointsObject } from './globe.js';
 import { buildHighlightSet, applyHighlights } from './highlight.js';
 import { createControls } from './controls.js';
 import { createLabelLayer, createCursorLabel } from './labels.js';
 import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
-
-// Highlighted dots keep their own per-category base opacity, multiplied by this
-// boost (clamped to 1) so they read as orange over the faint base dots without
-// flattening the coast > border > land opacity hierarchy.
-const HIGHLIGHT_OPACITY_BOOST = 1.7;
 
 // --- Module-scoped refs for recolor ----------------------------------------
 let globe = null;
@@ -48,7 +46,7 @@ let idToName = null;
 const overlayEl = document.getElementById('overlay');
 const cursorLabel = createCursorLabel({ overlayEl });
 const raycaster = new THREE.Raycaster();
-raycaster.params.Points.threshold = 0.012;
+raycaster.params.Points.threshold = RAYCAST_THRESHOLD;
 const pointer = new THREE.Vector2();
 let pointerPx = { x: 0, y: 0 };
 
@@ -64,7 +62,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
-camera.position.set(0, 0, 2.4);
+camera.position.set(0, 0, CAMERA_START_DIST);
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -122,7 +120,7 @@ async function loadGlobe() {
 
 function animate() {
   // pause ONLY while the left mouse button is held (drag); scroll/zoom does not pause.
-  if (!leftDown) root.rotation.y += 0.00015;
+  if (!leftDown) root.rotation.y += ROTATION_SPEED;
   controls.update();
   renderer.render(scene, camera);
   if (labelLayer) labelLayer.update(camera, root, window.innerWidth, window.innerHeight, camera.position.length());

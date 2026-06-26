@@ -1,8 +1,8 @@
 import { geoContains, geoArea } from 'd3-geo';
-import { STATE_LEVEL } from '../../src/config.js';
+import { STATE_LEVEL, DOT_SPACING, THINNING, REGION_PROBE_NUDGE_DEG } from '../../src/config.js';
 
-// alpha-3 -> alpha-2 for the four state-level countries only.
-const ISO3_TO_ISO2 = { BRA: 'BR', USA: 'US', CAN: 'CA', JPN: 'JP' };
+// alpha-3 -> alpha-2 for the three state-level countries only.
+const ISO3_TO_ISO2 = { BRA: 'BR', USA: 'US', CAN: 'CA' };
 
 /**
  * Resolve the parent country alpha-2 code from a state-line feature's properties.
@@ -78,7 +78,7 @@ export function assignRegion(index, lon, lat) {
 export function assignRegionNudged(index, lon, lat) {
   let id = assignRegion(index, lon, lat);
   if (id) return id;
-  const d = 0.08;
+  const d = REGION_PROBE_NUDGE_DEG;
   for (const [dx, dy] of [[d,0],[-d,0],[0,d],[0,-d],[d,d],[-d,-d],[d,-d],[-d,d]]) {
     id = assignRegion(index, lon + dx, lat + dy);
     if (id) return id;
@@ -96,7 +96,7 @@ export function assignRegionsNudged(index, lon, lat) {
   const found = new Set();
   const add = (l, a) => { const id = assignRegion(index, l, a); if (id) found.add(id); };
   add(lon, lat);
-  const d = 0.08;
+  const d = REGION_PROBE_NUDGE_DEG;
   for (const [dx, dy] of [[d,0],[-d,0],[0,d],[0,-d],[d,d],[-d,-d],[d,-d],[-d,d]]) {
     add(lon + dx, lat + dy);
   }
@@ -275,8 +275,8 @@ export function generatePoints(features, coastlineFC, countryLinesFC, stateLines
   // coast spacing (~coastGapDeg) with no overlaps — coast density is tuned via the
   // coastGapDeg arg of thinByHierarchy, not this sampling step. Smaller coastGapDeg
   // = denser coast = more detail (e.g. Italy's boot).
-  const coast  = generateCoastPoints(coastlineFC, index, 0.2);
-  const land   = generateLandPoints(index, 1.1);
-  const border = generateBorderPoints(countryLinesFC, stateLinesFC, index, 0.65);
-  return thinByHierarchy(coast, border, land, 0.6, 0.4);
+  const coast  = generateCoastPoints(coastlineFC, index, DOT_SPACING.coast);
+  const land   = generateLandPoints(index, DOT_SPACING.land);
+  const border = generateBorderPoints(countryLinesFC, stateLinesFC, index, DOT_SPACING.border);
+  return thinByHierarchy(coast, border, land, THINNING.clearanceDeg, THINNING.coastGapDeg);
 }

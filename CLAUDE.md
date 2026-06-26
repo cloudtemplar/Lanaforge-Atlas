@@ -28,8 +28,8 @@ Vitest (+ jsdom for DOM tests). **Node ≥ 18** (build script uses global `fetch
 
 ## Region model
 Region ids are **ISO 3166**: country = alpha-2 (`JP`, `FR`, `PT`); sub-region = ISO 3166-2
-(`BR-SP`, `US-CA`, `JP-13`). Only **4 countries** are marked at state level (admin-1) —
-`STATE_LEVEL = ['BR','US','CA','JP']` in `src/config.js`. Every other country (incl. all of
+(`BR-SP`, `US-CA`, `CA-ON`). Only **3 countries** are marked at state level (admin-1) —
+`STATE_LEVEL = ['BR','US','CA']` in `src/config.js`. Every other country (incl. Japan, all of
 Europe/UK, AR, AU) is a whole-country admin-0 region. `iso-reference.md` (generated) lists all
 valid ids.
 
@@ -38,11 +38,12 @@ Spec: `docs/superpowers/specs/2026-06-25-lanaforge-atlas-dot-style.md`.
 **Round** dots (custom `THREE.ShaderMaterial`, per-vertex `aSize`/`aOpacity`, round-discard in
 fragment, depth fade dims the far hemisphere). **No border lines** — borders are dots. Three
 categories (each point tagged `category`); per-category size/opacity live in `CATEGORY_STYLE`
-(`src/globe.js`), per-category spacing in `generatePoints` (`scripts/lib/points.mjs`):
+(`src/config.js`, consumed in `src/globe.js`), per-category spacing in `DOT_SPACING` (`src/config.js`,
+consumed by `generatePoints` in `scripts/lib/points.mjs`):
 - **coast** — coastline outline; the biggest, strongest category; densely traced along the
   coastline (`coastline` source).
 - **land** — uniform interior grid filling each territory; small and faint (point-in-polygon).
-- **border** — intra-continental country borders + the 4 countries' state borders; sized like land
+- **border** — intra-continental country borders + the 3 state-level countries' state borders; sized like land
   but a touch more opaque and **denser**, so it reads as a seam that separates neighbours (e.g.
   US/Canada). Each border dot carries `regionIds` (an array of ALL regions adjacent to the boundary,
   via `assignRegionsNudged`), so highlighting either neighbour lights up the whole shared seam — not
@@ -61,10 +62,14 @@ opacity-boost arg of `applyHighlights` in `main.js`) so the dots read over the f
 keeping the coast > border > land opacity hierarchy. The highlight color is constant across themes.
 
 ## Key files
-- `src/config.js` — tuning/structure constants: `GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`,
-  `TIER_FAR`/`TIER_NEAR` (label zoom tiers), `HIGHLIGHT_COLOR`, `STATE_LEVEL`, `SOURCES` (5 Natural
-  Earth URLs: admin-0 countries 50m, admin-1 states **10m**, admin-0 boundary_lines_land 50m,
-  admin-1 lines **10m**, coastline 50m). Read current values from the file.
+- `src/config.js` — **the single home for all tuning/structure constants** (see "Tunable visual
+  knobs"): geometry/camera (`GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR`,
+  `CAMERA_START_DIST`), dot style (`CATEGORY_STYLE`, `CATEGORY_FALLBACK`, `DOT_REF_DIST`,
+  `FAR_FADE_FLOOR`), highlight (`HIGHLIGHT_COLOR`, `HIGHLIGHT_OPACITY_BOOST`), interaction
+  (`ROTATION_SPEED`, `RAYCAST_THRESHOLD`), build-time spacing/thinning (`DOT_SPACING`, `THINNING`,
+  `REGION_PROBE_NUDGE_DEG`), `STATE_LEVEL`, and `SOURCES` (5 Natural Earth URLs: admin-0 countries
+  50m, admin-1 states **10m**, admin-0 boundary_lines_land 50m, admin-1 lines **10m**, coastline
+  50m). Read current values from the file.
 - `src/geo.js` — `latLonToVector3`, `vector3ToScreen`, `angularDistanceDeg`.
 - `src/globe.js` — `buildPointsGeometry` (position/color/aSize/aOpacity; `regionIndexMap` only for
   non-null regionId), `createPointsObject` (round-dot ShaderMaterial w/ `uRefDist` size attenuation;
@@ -85,7 +90,7 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
   `thinByHierarchy(coast, border, land, clearanceDeg, coastGapDeg)` (priority cull + coast
   self-spacing, see Dot system), `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`.
   Point = `{lat,lon,category}` + `regionId` (coast/land) or `regionIds` (border). `ISO3_TO_ISO2` map
-  (BRA/USA/CAN/JPN) filters state lines.
+  (BRA/USA/CAN) filters state lines.
 - `scripts/lib/reference.mjs` — `buildIsoReference` → `iso-reference.md`.
 - `scripts/preprocess.mjs` — orchestrator (writes regions.json, points.json, iso-reference.md;
   **no borders.json** in v2).
@@ -103,7 +108,7 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
   under the gitignored `public/data/`.
 - **admin-1 must be 10m**: the 50m admin-1 set omits subdivisions for most countries. admin-0 +
   coastline stay 50m (lighter). State-line features key parent country on `ADM0_A3` (3-letter,
-  e.g. `JPN`) — use the `ISO3_TO_ISO2` map, not `.slice(0,2)`.
+  e.g. `BRA`) — use the `ISO3_TO_ISO2` map, not `.slice(0,2)`.
 - **Fresh checkout**: `public/data/` and `scripts/geo-src/` are gitignored, so `npm run fetch-geo`
   + `npm run data` must run before `npm run build` (build = `data && vite build`).
 - Auto-rotation spins the `root` group (not the camera) at a slow constant rate (the literal is in
@@ -115,23 +120,30 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
 `npm run fetch-geo` · `npm run data` · `npm test` (Vitest).
 
 ## Tunable visual knobs (names + locations only — values live in the code)
-- **Dot size & opacity** per category — `CATEGORY_STYLE` (`src/globe.js`).
-- **Dot spacing** per category — args in `generatePoints` (`scripts/lib/points.mjs`); **re-run
-  `npm run data`** after (spacing is baked into `points.json`). Everything else here is runtime
-  (hot-reloads in `npm run dev`).
-- **Hierarchy thinning** — `clearanceDeg` (cross-category) and `coastGapDeg` (coast self-spacing /
-  non-overlap; also the de-facto coast-density knob) args of `thinByHierarchy` in `generatePoints`
-  (`scripts/lib/points.mjs`); bigger = more aggressive removal. Build-time — **re-run `npm run data`**.
-- **Dot size attenuation** (world-anchored growth on zoom) — `uRefDist` uniform (`src/globe.js`);
-  lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
-- **Far-hemisphere fade** — the `mix(...)` floor in the fragment shader (`src/globe.js`).
-- **Highlight color & opacity boost** — `HIGHLIGHT_COLOR` (`src/config.js`) + `HIGHLIGHT_OPACITY_BOOST`
-  (the opacity-boost multiplier arg to `applyHighlights`, `src/main.js`).
-- **Rotation speed** & **raycaster `Points.threshold`** — `src/main.js`.
-- **Zoom limits / label tiers** — `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR` (`src/config.js`).
+**ALL tunable constants live in `src/config.js`** (imported by both the browser runtime and the
+build-time scripts). Below: the config export → where it's consumed.
+- **Dot size & opacity** per category — `CATEGORY_STYLE` (+ `CATEGORY_FALLBACK`); consumed in
+  `src/globe.js`. Runtime (hot-reloads in `npm run dev`).
+- **Dot spacing** per category — `DOT_SPACING` ({coast,land,border}); consumed in `generatePoints`
+  (`scripts/lib/points.mjs`). **Build-time — re-run `npm run data`** (baked into `points.json`).
+- **Hierarchy thinning** — `THINNING.clearanceDeg` (cross-category) and `THINNING.coastGapDeg`
+  (coast self-spacing / non-overlap; also the de-facto coast-density knob); consumed by
+  `thinByHierarchy` in `generatePoints`. Bigger = more aggressive removal. **Build-time — re-run
+  `npm run data`.**
+- **Region probe nudge** — `REGION_PROBE_NUDGE_DEG`; consumed by `assignRegion*Nudged`
+  (`scripts/lib/points.mjs`). **Build-time.**
+- **Dot size attenuation** (world-anchored growth on zoom) — `DOT_REF_DIST` → `uRefDist` uniform
+  (`src/globe.js`); lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
+- **Far-hemisphere fade** — `FAR_FADE_FLOOR` → the `mix(...)` floor in the fragment shader
+  (`src/globe.js`).
+- **Highlight color & opacity boost** — `HIGHLIGHT_COLOR` + `HIGHLIGHT_OPACITY_BOOST` (consumed via
+  `applyHighlights` in `src/main.js`).
+- **Camera start / rotation speed / raycaster threshold** — `CAMERA_START_DIST`, `ROTATION_SPEED`,
+  `RAYCAST_THRESHOLD`; consumed in `src/main.js` (`CAMERA_START_DIST` also seeds `uCamDist`).
+- **Zoom limits / label tiers** — `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR`.
 
 ## Status
 v1 (14-country, square contour/fill dots, border lines) shipped, then revised to **v2** (this doc):
-4 state-level countries, round 3-category dots, no border lines, slower drag-pause rotation,
-renamed Lanaforge Atlas. Visual fine-tuning with the author is ongoing — treat the knobs above as
+3 state-level countries (BR/US/CA), round 3-category dots, no border lines, slower drag-pause
+rotation, renamed Lanaforge Atlas. Visual fine-tuning with the author is ongoing — treat the knobs above as
 adjustable. Process notes & per-task history live in `.superpowers/sdd/progress.md` (gitignored scratch).

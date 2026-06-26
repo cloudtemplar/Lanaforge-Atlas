@@ -36,4 +36,12 @@ describe('buildRegions', () => {
       expect(typeof r.centroid.lon).toBe('number');
     }
   });
+  it('prefixes admin-1 names with the country label', () => {
+    const ca = regions.find(r => r.id === 'US-CA');
+    expect(ca.name).toBe('US - California');
+  });
+  it('leaves non-state-level country names unprefixed', () => {
+    const pt = regions.find(r => r.id === 'PT');
+    expect(pt.name).toBe('Portugal');
+  });
 });

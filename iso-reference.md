@@ -249,94 +249,94 @@ Parent countries: BR, US, CA
 
 | id | name |
 |----|------|
-| BR-AC | Acre |
-| BR-AL | Alagoas |
-| BR-AM | Amazonas |
-| BR-AP | Amapá |
-| BR-BA | Bahia |
-| BR-CE | Ceará |
-| BR-DF | Distrito Federal |
-| BR-ES | Espírito Santo |
-| BR-GO | Goiás |
-| BR-MA | Maranhão |
-| BR-MG | Minas Gerais |
-| BR-MS | Mato Grosso do Sul |
-| BR-MT | Mato Grosso |
-| BR-PA | Pará |
-| BR-PB | Paraíba |
-| BR-PE | Pernambuco |
-| BR-PI | Piauí |
-| BR-PR | Paraná |
-| BR-RJ | Rio de Janeiro |
-| BR-RN | Rio Grande do Norte |
-| BR-RO | Rondônia |
-| BR-RR | Roraima |
-| BR-RS | Rio Grande do Sul |
-| BR-SC | Santa Catarina |
-| BR-SE | Sergipe |
-| BR-SP | São Paulo |
-| BR-TO | Tocantins |
-| CA-AB | Alberta |
-| CA-BC | British Columbia |
-| CA-MB | Manitoba |
-| CA-NB | New Brunswick |
-| CA-NL | Newfoundland and Labrador |
-| CA-NS | Nova Scotia |
-| CA-NT | Northwest Territories |
-| CA-NU | Nunavut |
-| CA-ON | Ontario |
-| CA-PE | Prince Edward Island |
-| CA-QC | Québec |
-| CA-SK | Saskatchewan |
-| CA-YT | Yukon |
-| US-AK | Alaska |
-| US-AL | Alabama |
-| US-AR | Arkansas |
-| US-AZ | Arizona |
-| US-CA | California |
-| US-CO | Colorado |
-| US-CT | Connecticut |
-| US-DC | District of Columbia |
-| US-DE | Delaware |
-| US-FL | Florida |
-| US-GA | Georgia |
-| US-HI | Hawaii |
-| US-IA | Iowa |
-| US-ID | Idaho |
-| US-IL | Illinois |
-| US-IN | Indiana |
-| US-KS | Kansas |
-| US-KY | Kentucky |
-| US-LA | Louisiana |
-| US-MA | Massachusetts |
-| US-MD | Maryland |
-| US-ME | Maine |
-| US-MI | Michigan |
-| US-MN | Minnesota |
-| US-MO | Missouri |
-| US-MS | Mississippi |
-| US-MT | Montana |
-| US-NC | North Carolina |
-| US-ND | North Dakota |
-| US-NE | Nebraska |
-| US-NH | New Hampshire |
-| US-NJ | New Jersey |
-| US-NM | New Mexico |
-| US-NV | Nevada |
-| US-NY | New York |
-| US-OH | Ohio |
-| US-OK | Oklahoma |
-| US-OR | Oregon |
-| US-PA | Pennsylvania |
-| US-RI | Rhode Island |
-| US-SC | South Carolina |
-| US-SD | South Dakota |
-| US-TN | Tennessee |
-| US-TX | Texas |
-| US-UT | Utah |
-| US-VA | Virginia |
-| US-VT | Vermont |
-| US-WA | Washington |
-| US-WI | Wisconsin |
-| US-WV | West Virginia |
-| US-WY | Wyoming |
+| BR-AC | Brazil - Acre |
+| BR-AL | Brazil - Alagoas |
+| BR-AM | Brazil - Amazonas |
+| BR-AP | Brazil - Amapá |
+| BR-BA | Brazil - Bahia |
+| BR-CE | Brazil - Ceará |
+| BR-DF | Brazil - Distrito Federal |
+| BR-ES | Brazil - Espírito Santo |
+| BR-GO | Brazil - Goiás |
+| BR-MA | Brazil - Maranhão |
+| BR-MG | Brazil - Minas Gerais |
+| BR-MS | Brazil - Mato Grosso do Sul |
+| BR-MT | Brazil - Mato Grosso |
+| BR-PA | Brazil - Pará |
+| BR-PB | Brazil - Paraíba |
+| BR-PE | Brazil - Pernambuco |
+| BR-PI | Brazil - Piauí |
+| BR-PR | Brazil - Paraná |
+| BR-RJ | Brazil - Rio de Janeiro |
+| BR-RN | Brazil - Rio Grande do Norte |
+| BR-RO | Brazil - Rondônia |
+| BR-RR | Brazil - Roraima |
+| BR-RS | Brazil - Rio Grande do Sul |
+| BR-SC | Brazil - Santa Catarina |
+| BR-SE | Brazil - Sergipe |
+| BR-SP | Brazil - São Paulo |
+| BR-TO | Brazil - Tocantins |
+| CA-AB | Canada - Alberta |
+| CA-BC | Canada - British Columbia |
+| CA-MB | Canada - Manitoba |
+| CA-NB | Canada - New Brunswick |
+| CA-NL | Canada - Newfoundland and Labrador |
+| CA-NS | Canada - Nova Scotia |
+| CA-NT | Canada - Northwest Territories |
+| CA-NU | Canada - Nunavut |
+| CA-ON | Canada - Ontario |
+| CA-PE | Canada - Prince Edward Island |
+| CA-QC | Canada - Québec |
+| CA-SK | Canada - Saskatchewan |
+| CA-YT | Canada - Yukon |
+| US-AK | US - Alaska |
+| US-AL | US - Alabama |
+| US-AR | US - Arkansas |
+| US-AZ | US - Arizona |
+| US-CA | US - California |
+| US-CO | US - Colorado |
+| US-CT | US - Connecticut |
+| US-DC | US - District of Columbia |
+| US-DE | US - Delaware |
+| US-FL | US - Florida |
+| US-GA | US - Georgia |
+| US-HI | US - Hawaii |
+| US-IA | US - Iowa |
+| US-ID | US - Idaho |
+| US-IL | US - Illinois |
+| US-IN | US - Indiana |
+| US-KS | US - Kansas |
+| US-KY | US - Kentucky |
+| US-LA | US - Louisiana |
+| US-MA | US - Massachusetts |
+| US-MD | US - Maryland |
+| US-ME | US - Maine |
+| US-MI | US - Michigan |
+| US-MN | US - Minnesota |
+| US-MO | US - Missouri |
+| US-MS | US - Mississippi |
+| US-MT | US - Montana |
+| US-NC | US - North Carolina |
+| US-ND | US - North Dakota |
+| US-NE | US - Nebraska |
+| US-NH | US - New Hampshire |
+| US-NJ | US - New Jersey |
+| US-NM | US - New Mexico |
+| US-NV | US - Nevada |
+| US-NY | US - New York |
+| US-OH | US - Ohio |
+| US-OK | US - Oklahoma |
+| US-OR | US - Oregon |
+| US-PA | US - Pennsylvania |
+| US-RI | US - Rhode Island |
+| US-SC | US - South Carolina |
+| US-SD | US - South Dakota |
+| US-TN | US - Tennessee |
+| US-TX | US - Texas |
+| US-UT | US - Utah |
+| US-VA | US - Virginia |
+| US-VT | US - Vermont |
+| US-WA | US - Washington |
+| US-WI | US - Wisconsin |
+| US-WV | US - West Virginia |
+| US-WY | US - Wyoming |

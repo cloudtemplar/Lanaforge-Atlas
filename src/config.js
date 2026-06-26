@@ -11,6 +11,9 @@ export const CAMERA_START_DIST = 2.4;
 // ── Region model ─────────────────────────────────────────────────────────────
 // Countries represented ONLY by admin-1 sub-regions (their admin-0 polygon is excluded).
 export const STATE_LEVEL = ['BR', 'US', 'CA'];
+// Short country label prefixed onto admin-1 region names, e.g. "Brazil - São Paulo".
+// (BUILD-TIME; consumed by buildRegions in scripts/lib/regions.mjs. Re-run `npm run data`.)
+export const STATE_COUNTRY_LABEL = { BR: 'Brazil', US: 'US', CA: 'Canada' };
 
 // ── Dot visual style (RUNTIME; consumed in src/globe.js) ─────────────────────
 // CSS-px size + base opacity per category. coast = biggest/strongest, land =
@@ -30,6 +33,11 @@ export const DOT_REF_DIST = 1.4;
 // Far-hemisphere fade: alpha floor for the back side of the globe (fragment-shader
 // mix() floor in src/globe.js). 0 = back fully transparent, 1 = no fade.
 export const FAR_FADE_FLOOR = 0.25;
+
+// World-anchored people-list label size: scale = LABEL_REF_DIST / viewDepth (same
+// semantics as DOT_REF_DIST for dots; consumed via labelScale in src/labels.js).
+// No clamp — labels grow/shrink with the globe. Higher = larger labels overall.
+export const LABEL_REF_DIST = 1.5;
 
 // ── Highlight (RUNTIME; src/highlight.js via src/main.js) ────────────────────
 // A highlighted region's dots switch to this color (constant across themes).

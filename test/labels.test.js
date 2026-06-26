@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zoomTier, truncateList, cullCollisions } from '../src/labels.js';
+import { zoomTier, truncateList, cullCollisions, labelScale } from '../src/labels.js';
 
 describe('zoomTier', () => {
   it('classifies by camera distance', () => {
@@ -18,6 +18,18 @@ describe('truncateList', () => {
     expect(r.shown).toEqual(['Ana','Bia','Cara','Dan','Eve']);
     expect(r.total).toBe(7);
     expect(r.hiddenCount).toBe(2);
+  });
+});
+
+describe('labelScale', () => {
+  it('returns 1 when depth equals the reference distance', () => {
+    expect(labelScale(1.4, 1.4)).toBe(1);
+  });
+  it('shrinks as the region gets farther (larger depth)', () => {
+    expect(labelScale(2.8, 1.4)).toBe(0.5);
+  });
+  it('grows as the region gets closer (smaller depth)', () => {
+    expect(labelScale(0.7, 1.4)).toBe(2);
   });
 });
 

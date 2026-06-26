@@ -31,14 +31,17 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 .region-pill.visible { opacity: 1; }
 
 .people-list {
-  pointer-events: auto;
+  pointer-events: none;
   text-align: center;
   color: var(--text);
   font-weight: 400;
   font-size: 13px;
   line-height: 1.25;
   text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  opacity: 0;
+  transition: opacity 200ms ease;
 }
+.people-list.visible { opacity: 1; pointer-events: auto; }
 .people-list .region-name { font-weight: 600; letter-spacing: 0.04em; font-size: 14px; }
 .people-list ul { list-style: none; }
 .people-list .more {

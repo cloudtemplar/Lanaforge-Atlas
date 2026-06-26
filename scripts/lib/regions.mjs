@@ -1,5 +1,5 @@
 import { geoCentroid } from 'd3-geo';
-import { STATE_LEVEL } from '../../src/config.js';
+import { STATE_LEVEL, STATE_COUNTRY_LABEL } from '../../src/config.js';
 
 const iso2 = (p) => p.ISO_A2_EH || p.ISO_A2 || p.iso_a2_eh || p.iso_a2 || '';
 const countryName = (p) => p.NAME || p.ADMIN || p.name || '';
@@ -23,7 +23,9 @@ export function buildRegions(countriesFC, statesFC) {
     const code = (f.properties.iso_3166_2 || '').toUpperCase();
     if (!STATE_LEVEL.includes(parent) || !code || code === parent) continue;
     const [lon, lat] = geoCentroid(f);
-    regions.push({ id: code, name: f.properties.name || code, centroid: { lat, lon } });
+    const prefix = STATE_COUNTRY_LABEL[parent] || parent;
+    const stateName = f.properties.name || code;
+    regions.push({ id: code, name: `${prefix} - ${stateName}`, centroid: { lat, lon } });
     features.push({ id: code, geometry: f.geometry });
   }
 

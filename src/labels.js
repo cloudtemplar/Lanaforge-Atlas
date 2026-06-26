@@ -1,4 +1,4 @@
-import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS } from './config.js';
+import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS, LABEL_REF_DIST } from './config.js';
 import { latLonToVector3, vector3ToScreen } from './geo.js';
 
 function escapeHtml(s) {
@@ -13,6 +13,12 @@ export function zoomTier(d) {
   if (d > TIER_FAR) return 'far';
   if (d < TIER_NEAR) return 'near';
   return 'medium';
+}
+
+// World-anchored label size factor: same semantics as the dot shader's uRefDist/-mv.z.
+// viewDepth = -(centroid in view space).z; refDist = LABEL_REF_DIST.
+export function labelScale(viewDepth, refDist) {
+  return refDist / viewDepth;
 }
 
 export function truncateList(names, limit = 5) {
@@ -92,18 +98,26 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     btn.remove();
   });
 
+  // Hide a label: fade it out (CSS handles the transition) and drop its built flag so it
+  // re-enters collapsed (top-5 + "+N more"), never stuck expanded after a zoom-out.
+  function hide(el, id) {
+    el.classList.remove('visible');
+    builtSet.delete(id);
+  }
+
   function update(camera, root, width, height, cameraDistance) {
     const tier = zoomTier(cameraDistance);
 
-    // Far tier: hide everything, no projection needed.
+    // Far tier: fade everything out, no projection needed.
     if (tier === 'far') {
-      for (const el of nodes.values()) el.style.display = 'none';
+      for (const [id, el] of nodes) hide(el, id);
       return;
     }
 
     // Project centroids; build collision candidates for on-screen, front-facing regions.
     const candidates = [];
     const screenById = new Map();
+    const scaleById = new Map();
 
     for (const r of active) {
       const local = latLonToVector3(r.centroid.lat, r.centroid.lon, GLOBE_RADIUS);
@@ -119,10 +133,15 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
         continue;
       }
       screenById.set(r.id, s);
+      // World-anchored size: scale by the centroid's view-space depth (matches the dots).
+      const viewDepth = -world.clone().applyMatrix4(camera.matrixWorldInverse).z;
+      const scale = labelScale(viewDepth, LABEL_REF_DIST);
+      scaleById.set(r.id, scale);
       const count = (peopleByRegion[r.id] || []).length;
-      // Estimate bounding box height: region name row + up to 5 name rows.
-      const w = 130;
-      const h = 20 + Math.min(count, 5) * 16 + (count > 5 ? 18 : 0);
+      // Estimate bounding box height: region name row + up to 5 name rows. Scale with the
+      // label so the medium-tier collision cull stays correct as labels grow.
+      const w = 130 * scale;
+      const h = (20 + Math.min(count, 5) * 16 + (count > 5 ? 18 : 0)) * scale;
       // Priority: more people = more interesting; ties broken by region id (stable).
       candidates.push({ index: r.id, x: s.x - w / 2, y: s.y - h / 2, w, h, priority: count + 1 });
     }
@@ -137,7 +156,7 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
       const s = screenById.get(r.id);
 
       if (!s || !kept.has(r.id)) {
-        el.style.display = 'none';
+        hide(el, r.id);
         continue;
       }
 
@@ -148,10 +167,11 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
         builtSet.add(r.id);
       }
 
-      el.style.display = 'block';
+      const scale = scaleById.get(r.id);
+      el.classList.add('visible');
       el.style.left = `${Math.round(s.x)}px`;
       el.style.top = `${Math.round(s.y)}px`;
-      el.style.transform = 'translate(-50%, -50%)';
+      el.style.transform = `translate(-50%, -50%) scale(${scale})`;
     }
   }
 

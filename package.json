@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "fetch-geo": "node scripts/fetch-geo.mjs",
     "data": "node scripts/preprocess.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy": "wrangler pages deploy dist --project-name=lanaforge-atlas",
+    "deploy:build": "npm run build && npm run deploy"
   },
   "dependencies": {
     "three": "^0.160.0"
@@ -18,6 +20,7 @@
     "d3-geo": "^3.1.0",
     "jsdom": "^29.1.1",
     "vite": "^5.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "wrangler": "^3.0.0"
   }
 }

@@ -15,11 +15,6 @@ other product name should appear anywhere.)
 Vite 5 · vanilla JS (ES modules) · three.js `^0.160` · d3-geo `^3` (build-time only) ·
 Vitest (+ jsdom for DOM tests). **Node ≥ 18** (build script uses global `fetch`).
 
-## Environment gotcha (Windows)
-Node is installed at `C:\Program Files\nodejs`. If a shell reports `node` not found, it was
-launched before Node was installed — open a NEW terminal, or prepend PATH:
-PowerShell `$env:Path = "C:\Program Files\nodejs;" + $env:Path` · Bash `export PATH="/c/Program Files/nodejs:$PATH"`.
-
 ## Architecture
 - **Build pipeline** (`scripts/`, Node): downloads Natural Earth GeoJSON → generates static
   JSON. **ALL point-in-polygon happens at build time**; the browser only renders precomputed data.

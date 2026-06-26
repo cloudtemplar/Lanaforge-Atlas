@@ -6,3 +6,4 @@ public/data/
 data/
 docs/superpowers/
 .playwright-mcp/
+.wrangler/

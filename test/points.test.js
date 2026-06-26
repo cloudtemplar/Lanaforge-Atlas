@@ -213,4 +213,15 @@ describe('thinByHierarchy', () => {
     const out = thinByHierarchy(coast, land.length ? [] : [], land, 0.6);
     expect(out.some(p => p.category === 'land')).toBe(false);
   });
+
+  it('thins land by landClearanceDeg, independently of border clearance', () => {
+    // coast at 0; a border and a land dot both 0.2 deg away.
+    // clearanceDeg 0.6 thins the border; a smaller landClearanceDeg (0.1) lets the land stay.
+    const coast = [at(0, 0, 'coast')];
+    const border = [at(0.2, 0, 'border')];
+    const land = [at(0.2, 0, 'land')];
+    const out = thinByHierarchy(coast, border, land, 0.6, 0.7, 0.1);
+    expect(out.some(p => p.category === 'border')).toBe(false); // border still thinned at 0.6
+    expect(out.some(p => p.category === 'land')).toBe(true);     // land allowed closer (0.1)
+  });
 });

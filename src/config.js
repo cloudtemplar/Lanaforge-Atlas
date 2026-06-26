@@ -60,12 +60,13 @@ export const RAYCAST_THRESHOLD = 0.012;  // Points raycaster hover threshold
 export const DOT_SPACING = {
   coast: 0.2,    // fine sampling; final coast spacing is set by THINNING.coastGapDeg
   land: 1.1,
-  border: 0.65,
+  border: 0.3,
 };
 // Hierarchy thinning radii (great-circle degrees). See thinByHierarchy.
 export const THINNING = {
-  clearanceDeg: 0.6,  // how far border/land must stay from a kept higher-priority dot
-  coastGapDeg: 0.4,   // min coast-to-coast separation (de-facto coast density knob)
+  clearanceDeg: 0.6,      // how far a BORDER dot must stay from a kept coast dot
+  landClearanceDeg: 0.1,  // how far a LAND dot must stay from a kept coast/border dot (lower = land sits closer)
+  coastGapDeg: 0.4,       // min coast-to-coast separation (de-facto coast density knob)
 };
 // Probe nudge for region assignment on/near boundaries (assignRegion*Nudged).
 export const REGION_PROBE_NUDGE_DEG = 0.08;

@@ -214,8 +214,10 @@ export function generateBorderPoints(countryLinesFC, stateLinesFC, index, stepDe
  *   - `coastGapDeg` — minimum separation between *coast* dots themselves, so the big
  *     coast dots don't overlap each other (coast is generated finely; this is the knob
  *     that sets the actual on-screen coast spacing).
- *   - `clearanceDeg` — how far a lower-priority dot (border, land) must stay from a kept
- *     higher-priority dot.
+ *   - `clearanceDeg` — how far a *border* dot must stay from a kept higher-priority (coast) dot.
+ *   - `landClearanceDeg` — same, but for *land* dots (vs kept coast/border). Split out so land can
+ *     be packed closer to coast/border than borders are, without loosening border spacing.
+ *     Defaults to `clearanceDeg` when omitted.
  * Border-vs-border and land-vs-land are not thinned — their generation spacing already
  * exceeds any overlap. Because dots are world-anchored (on-globe angular size is fixed,
  * px size scales uniformly with zoom), a clearance in degrees keeps a consistent px gap
@@ -226,7 +228,7 @@ export function generateBorderPoints(countryLinesFC, stateLinesFC, index, stepDe
  * the longitude scan by 1/cos(lat) so the radius stays circular at all latitudes.
  * (Antimeridian wrap is not special-cased — negligible at lon ±180.)
  */
-export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6, coastGapDeg = 0.7) {
+export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6, coastGapDeg = 0.7, landClearanceDeg = clearanceDeg) {
   const cell = Math.max(clearanceDeg, coastGapDeg);
   const grid = new Map();
   const key = (cx, cy) => cx + ',' + cy;
@@ -261,7 +263,7 @@ export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6, coastGa
   const kept = [];
   for (const p of coast)  { if (!blocked(p.lon, p.lat, coastGapDeg))  { kept.push(p); insert(p); } }
   for (const p of border) { if (!blocked(p.lon, p.lat, clearanceDeg)) { kept.push(p); insert(p); } }
-  for (const p of land)   { if (!blocked(p.lon, p.lat, clearanceDeg)) { kept.push(p); insert(p); } }
+  for (const p of land)   { if (!blocked(p.lon, p.lat, landClearanceDeg)) { kept.push(p); insert(p); } }
   return kept;
 }
 
@@ -278,5 +280,5 @@ export function generatePoints(features, coastlineFC, countryLinesFC, stateLines
   const coast  = generateCoastPoints(coastlineFC, index, DOT_SPACING.coast);
   const land   = generateLandPoints(index, DOT_SPACING.land);
   const border = generateBorderPoints(countryLinesFC, stateLinesFC, index, DOT_SPACING.border);
-  return thinByHierarchy(coast, border, land, THINNING.clearanceDeg, THINNING.coastGapDeg);
+  return thinByHierarchy(coast, border, land, THINNING.clearanceDeg, THINNING.coastGapDeg, THINNING.landClearanceDeg);
 }

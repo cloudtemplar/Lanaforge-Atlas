@@ -5,7 +5,7 @@ import { latLonToVector3 } from './geo.js';
 const CATEGORY_STYLE = {
   coast:  { size: 5.0, opacity: 0.70 },
   land:   { size: 3.3, opacity: 0.25 },
-  border: { size: 4.2, opacity: 0.40 },
+  border: { size: 4.2, opacity: 0.60 },
 };
 const CATEGORY_FALLBACK = { size: 3.3, opacity: 0.35 };
 
@@ -28,10 +28,13 @@ export function buildPointsGeometry(points, radius) {
     sizes[i]     = style.size;
     opacities[i] = style.opacity;
 
-    // Only index non-null regionIds
-    if (p.regionId != null) {
-      if (!regionIndexMap.has(p.regionId)) regionIndexMap.set(p.regionId, []);
-      regionIndexMap.get(p.regionId).push(i);
+    // Index every region this point belongs to. Coast/land carry a single `regionId`;
+    // border dots carry `regionIds` (both sides of the boundary) so highlighting either
+    // adjacent region lights up the whole shared seam.
+    const ids = p.regionIds ?? (p.regionId != null ? [p.regionId] : []);
+    for (const id of ids) {
+      if (!regionIndexMap.has(id)) regionIndexMap.set(id, []);
+      regionIndexMap.get(id).push(i);
     }
   }
 

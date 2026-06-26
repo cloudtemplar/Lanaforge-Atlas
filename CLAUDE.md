@@ -49,17 +49,21 @@ categories (each point tagged `category`); per-category size/opacity live in `CA
 - **land** — uniform interior grid filling each territory; small and faint (point-in-polygon).
 - **border** — intra-continental country borders + the 4 countries' state borders; sized like land
   but a touch more opaque and **denser**, so it reads as a seam that separates neighbours (e.g.
-  US/Canada). `regionId` is `null` for border dots (not highlighted).
+  US/Canada). Each border dot carries `regionIds` (an array of ALL regions adjacent to the boundary,
+  via `assignRegionsNudged`), so highlighting either neighbour lights up the whole shared seam — not
+  a patchy half. (coast/land carry a single `regionId`.)
 After generation the three categories are **thinned by hierarchy** (`thinByHierarchy` in
 `scripts/lib/points.mjs`): priority is coast > border > land, and a lower-priority dot is dropped
-when it falls within a clearance radius (degrees, in code) of an already-kept higher-priority dot,
-so the categories don't pile up in dense areas (e.g. Japan). Equal priority is never thinned —
-intra-category spacing is the generators' job. Clearance is build-time, so changes need `npm run data`.
-All islands kept (no size filter). Dots are **world-anchored** (perspective size attenuation via
-the `uRefDist` uniform in `src/globe.js`) so they grow on zoom-in. **Highlight** (= author's choice
-"B"): a highlighted region's own dots switch to `HIGHLIGHT_COLOR` (`src/config.js`) AND their opacity
-is boosted (the highlight-opacity arg of `applyHighlights` in `main.js`) so they read over faint
-dots. The highlight color is constant across themes.
+when it falls within `clearanceDeg` (great-circle) of an already-kept higher-priority dot, so the
+categories don't pile up in dense areas (e.g. Japan). Coast also thins against itself via a separate
+`coastGapDeg` (the big coast dots must not overlap each other — coast is generated finely and this
+gap sets the even final coast spacing); border/land are not self-thinned. Thinning is build-time, so
+changes need `npm run data`. All islands kept (no size filter). Dots are **world-anchored**
+(perspective size attenuation via the `uRefDist` uniform in `src/globe.js`) so they grow on zoom-in.
+**Highlight** (= author's choice "B"): a highlighted region's own dots switch to `HIGHLIGHT_COLOR`
+(`src/config.js`) AND each dot's own base opacity is multiplied by a boost (clamped to 1; the
+opacity-boost arg of `applyHighlights` in `main.js`) so the dots read over the faint base while
+keeping the coast > border > land opacity hierarchy. The highlight color is constant across themes.
 
 ## Key files
 - `src/config.js` — tuning/structure constants: `GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`,
@@ -81,10 +85,12 @@ dots. The highlight color is constant across themes.
 - `src/main.js` — scene/render-loop wiring (see conventions below).
 - `scripts/lib/regions.mjs` — `buildRegions(countriesFC, statesFC) → {regions, features}`.
 - `scripts/lib/points.mjs` — `buildRegionIndex`, `assignRegion`, `assignRegionNudged`,
-  `generateLandPoints`, `generateCoastPoints`, `generateBorderPoints`,
-  `thinByHierarchy(coast, border, land, clearanceDeg)` (priority cull, see Dot system),
-  `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`. Point =
-  `{lat,lon,regionId,category}`. `ISO3_TO_ISO2` map (BRA/USA/CAN/JPN) filters state lines.
+  `assignRegionsNudged` (all adjacent regions, for borders), `generateLandPoints`,
+  `generateCoastPoints`, `generateBorderPoints(…, index, stepDeg)` (border dots get `regionIds`),
+  `thinByHierarchy(coast, border, land, clearanceDeg, coastGapDeg)` (priority cull + coast
+  self-spacing, see Dot system), `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`.
+  Point = `{lat,lon,category}` + `regionId` (coast/land) or `regionIds` (border). `ISO3_TO_ISO2` map
+  (BRA/USA/CAN/JPN) filters state lines.
 - `scripts/lib/reference.mjs` — `buildIsoReference` → `iso-reference.md`.
 - `scripts/preprocess.mjs` — orchestrator (writes regions.json, points.json, iso-reference.md;
   **no borders.json** in v2).
@@ -118,14 +124,14 @@ dots. The highlight color is constant across themes.
 - **Dot spacing** per category — args in `generatePoints` (`scripts/lib/points.mjs`); **re-run
   `npm run data`** after (spacing is baked into `points.json`). Everything else here is runtime
   (hot-reloads in `npm run dev`).
-- **Hierarchy thinning clearance** — `clearanceDeg` arg of `thinByHierarchy` in `generatePoints`
-  (`scripts/lib/points.mjs`); bigger = more aggressive removal of lower-priority dots around
-  higher-priority ones. Build-time — **re-run `npm run data`** after.
+- **Hierarchy thinning** — `clearanceDeg` (cross-category) and `coastGapDeg` (coast self-spacing /
+  non-overlap; also the de-facto coast-density knob) args of `thinByHierarchy` in `generatePoints`
+  (`scripts/lib/points.mjs`); bigger = more aggressive removal. Build-time — **re-run `npm run data`**.
 - **Dot size attenuation** (world-anchored growth on zoom) — `uRefDist` uniform (`src/globe.js`);
   lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
 - **Far-hemisphere fade** — the `mix(...)` floor in the fragment shader (`src/globe.js`).
-- **Highlight color & opacity boost** — `HIGHLIGHT_COLOR` (`src/config.js`) + the highlight-opacity
-  arg to `applyHighlights` (`src/main.js`).
+- **Highlight color & opacity boost** — `HIGHLIGHT_COLOR` (`src/config.js`) + `HIGHLIGHT_OPACITY_BOOST`
+  (the opacity-boost multiplier arg to `applyHighlights`, `src/main.js`).
 - **Rotation speed** & **raycaster `Points.threshold`** — `src/main.js`.
 - **Zoom limits / label tiers** — `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR` (`src/config.js`).
 

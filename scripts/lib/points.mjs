@@ -86,6 +86,23 @@ export function assignRegionNudged(index, lon, lat) {
   return null; // open coast far from any kept polygon — render, but not highlightable
 }
 
+/**
+ * Like assignRegionNudged but collects EVERY distinct region found at the point and
+ * its 8 nudged neighbours. A border dot sits exactly on a boundary, so this returns
+ * both (or all) adjacent regions — used so a highlighted region lights up its WHOLE
+ * shared boundary, not just the dots that happened to probe its side.
+ */
+export function assignRegionsNudged(index, lon, lat) {
+  const found = new Set();
+  const add = (l, a) => { const id = assignRegion(index, l, a); if (id) found.add(id); };
+  add(lon, lat);
+  const d = 0.08;
+  for (const [dx, dy] of [[d,0],[-d,0],[0,d],[0,-d],[d,d],[-d,-d],[d,-d],[-d,d]]) {
+    add(lon + dx, lat + dy);
+  }
+  return [...found];
+}
+
 // Great-circle distance in degrees between two lon/lat points (haversine).
 function segDistDeg(aLon, aLat, bLon, bLat) {
   const toRad = (d) => (d * Math.PI) / 180;
@@ -167,20 +184,21 @@ export function generateCoastPoints(coastlineFC, index, stepDeg = 0.45) {
 
 /**
  * Border dots from intra-continental country lines (all) and state/province lines
- * filtered to the 4 STATE_LEVEL countries. regionId is always null — borders are
- * shared separators and are not highlighted. Default spacing ~0.7°.
+ * filtered to the 4 STATE_LEVEL countries. Each dot carries `regionIds` — ALL regions
+ * adjacent to the boundary (via assignRegionsNudged) — so a highlighted region lights
+ * up its entire shared boundary, not a patchy half. Default spacing ~0.7°.
  */
-export function generateBorderPoints(countryLinesFC, stateLinesFC, stepDeg = 0.7) {
+export function generateBorderPoints(countryLinesFC, stateLinesFC, index, stepDeg = 0.7) {
   const out = [];
   for (const f of countryLinesFC.features) {
     walkLineGeometry(f.geometry, stepDeg, (lon, lat) => {
-      out.push({ lat, lon, regionId: null, category: 'border' });
+      out.push({ lat, lon, regionIds: assignRegionsNudged(index, lon, lat), category: 'border' });
     });
   }
   for (const f of stateLinesFC.features) {
     if (!STATE_LEVEL.includes(parentAlpha2(f.properties))) continue;
     walkLineGeometry(f.geometry, stepDeg, (lon, lat) => {
-      out.push({ lat, lon, regionId: null, category: 'border' });
+      out.push({ lat, lon, regionIds: assignRegionsNudged(index, lon, lat), category: 'border' });
     });
   }
   return out;
@@ -188,25 +206,32 @@ export function generateBorderPoints(countryLinesFC, stateLinesFC, stepDeg = 0.7
 
 /**
  * Hierarchical spatial thinning. Each category has a priority
- * (coast > border > land); a lower-priority dot is dropped when it falls within
- * `clearanceDeg` (great-circle) of an already-kept higher-priority dot, so the
+ * (coast > border > land); a lower-priority dot is dropped when it falls within a
+ * clearance radius (great-circle) of an already-kept higher-priority dot, so the
  * categories don't pile up on top of each other in dense areas (e.g. Japan).
  *
- * Equal priority is never thinned here — per-category spacing is already handled
- * by the generators. Because dots are world-anchored (their on-globe angular size
- * is fixed and px size scales uniformly with zoom), a clearance in degrees keeps a
- * consistent px gap at every zoom level.
+ * Two radii:
+ *   - `coastGapDeg` — minimum separation between *coast* dots themselves, so the big
+ *     coast dots don't overlap each other (coast is generated finely; this is the knob
+ *     that sets the actual on-screen coast spacing).
+ *   - `clearanceDeg` — how far a lower-priority dot (border, land) must stay from a kept
+ *     higher-priority dot.
+ * Border-vs-border and land-vs-land are not thinned — their generation spacing already
+ * exceeds any overlap. Because dots are world-anchored (on-globe angular size is fixed,
+ * px size scales uniformly with zoom), a clearance in degrees keeps a consistent px gap
+ * at every zoom level.
  *
- * Implementation: a lon/lat hash grid (cell = clearanceDeg) of kept higher-priority
- * points; each candidate is tested with an exact haversine check against neighbour
- * cells, widening the longitude scan by 1/cos(lat) so the clearance stays circular at
- * all latitudes. (Antimeridian wrap is not special-cased — negligible at lon ±180.)
+ * Implementation: one lon/lat hash grid (cell = max radius) of kept points; each
+ * candidate is tested with an exact haversine check against neighbour cells, widening
+ * the longitude scan by 1/cos(lat) so the radius stays circular at all latitudes.
+ * (Antimeridian wrap is not special-cased — negligible at lon ±180.)
  */
-export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6) {
+export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6, coastGapDeg = 0.7) {
+  const cell = Math.max(clearanceDeg, coastGapDeg);
   const grid = new Map();
   const key = (cx, cy) => cx + ',' + cy;
-  const cellX = (lon) => Math.floor(lon / clearanceDeg);
-  const cellY = (lat) => Math.floor(lat / clearanceDeg);
+  const cellX = (lon) => Math.floor(lon / cell);
+  const cellY = (lat) => Math.floor(lat / cell);
 
   const insert = (p) => {
     const k = key(cellX(p.lon), cellY(p.lat));
@@ -215,16 +240,18 @@ export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6) {
     bucket.push(p);
   };
 
-  // True when a kept (higher-priority) point lies within clearanceDeg of (lon,lat).
-  const blocked = (lon, lat) => {
+  // True when a kept point lies within `radius` (great-circle deg) of (lon,lat).
+  const blocked = (lon, lat, radius) => {
     const cx = cellX(lon), cy = cellY(lat);
-    const lonSpan = Math.ceil(1 / Math.max(Math.cos((lat * Math.PI) / 180), 0.15)) + 1;
-    for (let dy = -1; dy <= 1; dy++) {
+    const cosLat = Math.max(Math.cos((lat * Math.PI) / 180), 0.15);
+    const lonSpan = Math.ceil(radius / cell / cosLat) + 1;
+    const latSpan = Math.ceil(radius / cell) + 1;
+    for (let dy = -latSpan; dy <= latSpan; dy++) {
       for (let dx = -lonSpan; dx <= lonSpan; dx++) {
         const bucket = grid.get(key(cx + dx, cy + dy));
         if (!bucket) continue;
         for (const q of bucket) {
-          if (segDistDeg(lon, lat, q.lon, q.lat) < clearanceDeg) return true;
+          if (segDistDeg(lon, lat, q.lon, q.lat) < radius) return true;
         }
       }
     }
@@ -232,9 +259,9 @@ export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6) {
   };
 
   const kept = [];
-  for (const p of coast) { kept.push(p); insert(p); }                 // keep all
-  for (const p of border) { if (!blocked(p.lon, p.lat)) { kept.push(p); insert(p); } }
-  for (const p of land) { if (!blocked(p.lon, p.lat)) { kept.push(p); insert(p); } }
+  for (const p of coast)  { if (!blocked(p.lon, p.lat, coastGapDeg))  { kept.push(p); insert(p); } }
+  for (const p of border) { if (!blocked(p.lon, p.lat, clearanceDeg)) { kept.push(p); insert(p); } }
+  for (const p of land)   { if (!blocked(p.lon, p.lat, clearanceDeg)) { kept.push(p); insert(p); } }
   return kept;
 }
 
@@ -244,8 +271,12 @@ export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6) {
  */
 export function generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC) {
   const index = buildRegionIndex(features);
-  const coast  = generateCoastPoints(coastlineFC, index, 0.75);
+  // Coast is generated finely (0.2) so the coastGapDeg thinning sets an EVEN final
+  // coast spacing (~coastGapDeg) with no overlaps — coast density is tuned via the
+  // coastGapDeg arg of thinByHierarchy, not this sampling step. Smaller coastGapDeg
+  // = denser coast = more detail (e.g. Italy's boot).
+  const coast  = generateCoastPoints(coastlineFC, index, 0.2);
   const land   = generateLandPoints(index, 1.1);
-  const border = generateBorderPoints(countryLinesFC, stateLinesFC, 0.85);
-  return thinByHierarchy(coast, border, land, 0.6);
+  const border = generateBorderPoints(countryLinesFC, stateLinesFC, index, 0.65);
+  return thinByHierarchy(coast, border, land, 0.6, 0.4);
 }

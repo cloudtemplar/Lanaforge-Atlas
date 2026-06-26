@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildRegionIndex, assignRegion, assignRegionNudged,
+  buildRegionIndex, assignRegion, assignRegionNudged, assignRegionsNudged,
   generateLandPoints, generateCoastPoints, generateBorderPoints,
   thinByHierarchy,
 } from '../scripts/lib/points.mjs';
@@ -41,6 +41,28 @@ describe('assignRegionNudged', () => {
   });
   it('returns null for a far-away ocean point', () => {
     expect(assignRegionNudged(index, 100, 0)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('assignRegionsNudged', () => {
+  // Two squares sharing the lon=10 edge: LEFT [0,10], RIGHT [10,20] (both lat [-10,10]).
+  const adjacent = buildRegionIndex([
+    { id: 'LEFT',  geometry: square(5, 0, 5) },
+    { id: 'RIGHT', geometry: square(15, 0, 5) },
+  ]);
+
+  it('collects BOTH regions adjacent to a shared boundary', () => {
+    const ids = assignRegionsNudged(adjacent, 10, 0).sort();
+    expect(ids).toEqual(['LEFT', 'RIGHT']);
+  });
+
+  it('returns a single region for an interior point', () => {
+    expect(assignRegionsNudged(adjacent, 5, 0)).toEqual(['LEFT']);
+  });
+
+  it('returns empty for an ocean point', () => {
+    expect(assignRegionsNudged(adjacent, 100, 0)).toEqual([]);
   });
 });
 
@@ -115,14 +137,18 @@ describe('generateBorderPoints', () => {
     ],
   };
 
-  const pts = generateBorderPoints(countryLines, stateLines, 0.5);
+  const pts = generateBorderPoints(countryLines, stateLines, index, 0.5);
 
-  it('all output tagged category:border with regionId null', () => {
+  it('all output tagged category:border', () => {
     expect(pts.length).toBeGreaterThan(0);
     for (const p of pts) {
       expect(p.category).toBe('border');
-      expect(p.regionId).toBeNull();
     }
+  });
+
+  it('resolves regionIds via nudged probe so boundary dots are highlightable', () => {
+    // The country line runs through region AA ([-10,10]) — those dots list AA in regionIds.
+    expect(pts.some(p => p.lon >= 0 && p.lon <= 2 && p.regionIds.includes('AA'))).toBe(true);
   });
 
   it('includes all country-line points', () => {
@@ -145,9 +171,16 @@ describe('generateBorderPoints', () => {
 describe('thinByHierarchy', () => {
   const at = (lon, lat, category) => ({ lon, lat, category, regionId: null });
 
-  it('keeps every coast dot regardless of crowding', () => {
-    const coast = [at(0, 0, 'coast'), at(0.01, 0, 'coast'), at(0.02, 0, 'coast')];
-    const out = thinByHierarchy(coast, [], [], 0.6);
+  it('thins coast dots closer than coastGapDeg to each other', () => {
+    // 3 coast dots 0.1° apart; coastGapDeg 0.5 keeps only the first (others within gap).
+    const coast = [at(0, 0, 'coast'), at(0.1, 0, 'coast'), at(0.2, 0, 'coast')];
+    const out = thinByHierarchy(coast, [], [], 0.6, 0.5);
+    expect(out.length).toBe(1);
+  });
+
+  it('keeps coast dots spaced beyond coastGapDeg', () => {
+    const coast = [at(0, 0, 'coast'), at(1, 0, 'coast'), at(2, 0, 'coast')];
+    const out = thinByHierarchy(coast, [], [], 0.6, 0.5);
     expect(out.length).toBe(3);
   });
 

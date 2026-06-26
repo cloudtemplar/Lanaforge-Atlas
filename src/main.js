@@ -7,6 +7,11 @@ import { createLabelLayer, createCursorLabel } from './labels.js';
 import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
 
+// Highlighted dots keep their own per-category base opacity, multiplied by this
+// boost (clamped to 1) so they read as orange over the faint base dots without
+// flattening the coast > border > land opacity hierarchy.
+const HIGHLIGHT_OPACITY_BOOST = 1.7;
+
 // --- Module-scoped refs for recolor ----------------------------------------
 let globe = null;
 let loadedPoints = null;
@@ -32,7 +37,7 @@ function recolorGlobe(colors) {
     globe.baseColors[i * 3 + 1] = base.g;
     globe.baseColors[i * 3 + 2] = base.b;
   }
-  applyHighlights(globe.geometry, globe.regionIndexMap, globe.baseColors, globe.baseOpacity, highlightSet || new Set(), HIGHLIGHT_COLOR, 0.9);
+  applyHighlights(globe.geometry, globe.regionIndexMap, globe.baseColors, globe.baseOpacity, highlightSet || new Set(), HIGHLIGHT_COLOR, HIGHLIGHT_OPACITY_BOOST);
 }
 
 // --- Scene setup -----------------------------------------------------------
@@ -93,7 +98,7 @@ async function loadGlobe() {
   const { set, unknown } = buildHighlightSet(highlights, validIds);
   if (unknown.length) console.warn('[highlights] unknown region ids ignored:', unknown);
   highlightSet = set;
-  applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, obj.baseOpacity, set, HIGHLIGHT_COLOR, 0.9);
+  applyHighlights(obj.geometry, obj.regionIndexMap, obj.baseColors, obj.baseOpacity, set, HIGHLIGHT_COLOR, HIGHLIGHT_OPACITY_BOOST);
 
   labelLayer = createLabelLayer({
     overlayEl,
@@ -116,9 +121,8 @@ async function loadGlobe() {
 }
 
 function animate() {
-  // Auto-rotate ~70% slower than before (0.00027 = 30% of the original 0.0009);
   // pause ONLY while the left mouse button is held (drag); scroll/zoom does not pause.
-  if (!leftDown) root.rotation.y += 0.00027;
+  if (!leftDown) root.rotation.y += 0.00015;
   controls.update();
   renderer.render(scene, camera);
   if (labelLayer) labelLayer.update(camera, root, window.innerWidth, window.innerHeight, camera.position.length());

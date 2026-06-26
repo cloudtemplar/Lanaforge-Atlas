@@ -10,7 +10,7 @@ export function buildHighlightSet(highlightsData, validIds) {
   return { set, unknown };
 }
 
-export function applyHighlights(geometry, regionIndexMap, baseColors, baseOpacity, set, colorHex, highlightOpacity) {
+export function applyHighlights(geometry, regionIndexMap, baseColors, baseOpacity, set, colorHex, opacityBoost) {
   const colorAttr   = geometry.getAttribute('color');
   const opacityAttr = geometry.getAttribute('aOpacity');
 
@@ -24,7 +24,9 @@ export function applyHighlights(geometry, regionIndexMap, baseColors, baseOpacit
     if (!indices) continue;
     for (const i of indices) {
       colorAttr.setXYZ(i, c.r, c.g, c.b);
-      opacityAttr.array[i] = highlightOpacity;
+      // Boost each dot's OWN base opacity (clamped) so a highlighted land dot stays
+      // relatively fainter than a highlighted coast dot — the hierarchy is preserved.
+      opacityAttr.array[i] = Math.min(1, baseOpacity[i] * opacityBoost);
     }
   }
 

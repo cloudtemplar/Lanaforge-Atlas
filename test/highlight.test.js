@@ -36,15 +36,17 @@ describe('applyHighlights', () => {
     };
 
     const baseColors  = new Float32Array([0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,0.5]);
-    const baseOpacity = new Float32Array([0.3, 0.3, 0.3]);
+    // idx0 faint (land-like), idx1 strong (coast-like) — hierarchy must survive boost.
+    const baseOpacity = new Float32Array([0.2, 0.6, 0.3]);
     const map = new Map([['AA',[0,1]],['BB',[2]]]);
 
-    applyHighlights(geometry, map, baseColors, baseOpacity, new Set(['AA']), '#ff5a1f', 0.9);
+    applyHighlights(geometry, map, baseColors, baseOpacity, new Set(['AA']), '#ff5a1f', 2.0);
 
-    // AA points -> orange-ish (r > g) AND aOpacity ≈ 0.9
+    // AA points -> orange-ish (r > g) AND each dot's own base opacity * boost (clamped)
     expect(colorArr[0]).toBeGreaterThan(colorArr[1]);       // idx0 red dominates
-    expect(opacityArr[0]).toBeCloseTo(0.9, 5);              // idx0 opacity set
-    expect(opacityArr[1]).toBeCloseTo(0.9, 5);              // idx1 opacity set
+    expect(opacityArr[0]).toBeCloseTo(0.4, 5);              // 0.2 * 2.0 (faint stays fainter)
+    expect(opacityArr[1]).toBeCloseTo(1.0, 5);              // 0.6 * 2.0 clamped to 1
+    expect(opacityArr[0]).toBeLessThan(opacityArr[1]);      // hierarchy preserved
 
     // BB -> restored to base color and base opacity
     expect(colorArr[6]).toBeCloseTo(0.5, 5);          // idx2 color restored

@@ -2,8 +2,6 @@
 
 Minimalist, single-page **transparent dot-matrix 3D globe** that highlights the world
 regions where the author met people.
-(Originally prototyped under a different name; the project is now **Lanaforge Atlas** — no
-other product name should appear anywhere.)
 
 > **The code is the source of truth.** This doc explains *structure, intent, and where things
 > live* — not current values. Visual tuning numbers (dot sizes/opacities, spacings, colors, zoom

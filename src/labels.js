@@ -116,7 +116,10 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     if (namesEl) namesEl.innerHTML = namesInnerCollapsed(byId.get(id), peopleByRegion[id] || []);
   }
 
-  // Single delegated listener: "+N more" reveals all names; clicking a collapsible label toggles it.
+  // Single delegated listener: "+N more" reveals all names; clicking the COUNTRY NAME toggles it.
+  // Only the .region-name is a toggle target — the icon/count marker and the names list are not,
+  // so the clickable hit area stays tight to the country label (the list stays non-interactive
+  // apart from its own "+N more" button).
   overlayEl.addEventListener('click', (e) => {
     const moreBtn = e.target.closest('button.more');
     if (moreBtn) {
@@ -125,7 +128,9 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
       if (namesEl) namesEl.innerHTML = namesInnerAll(peopleByRegion[moreBtn.dataset.region] || []);
       return;
     }
-    const listEl = e.target.closest('.people-list');
+    const nameEl = e.target.closest('.region-name');
+    if (!nameEl) return;
+    const listEl = nameEl.closest('.people-list');
     if (!listEl) return;
     const id = listEl.dataset.region;
     if (!nodes.has(id) || !collapsibleIds.has(id)) return; // below-threshold: not toggleable

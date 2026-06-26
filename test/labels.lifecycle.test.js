@@ -96,6 +96,32 @@ describe('people markers (two-state label)', () => {
     expect(lu.classList.contains('expanded')).toBe(true); // unchanged — no marker to collapse into
   });
 
+  it('expands only via the country name, not the icon/count area', () => {
+    const cam = makeCamera(2.0);
+    layer.update(cam, makeRoot(), W, H, cam.position.length());
+    const de = node('DE');
+    // Clicking the collapsed marker's icon/count row must NOT toggle it.
+    de.querySelector('.count-row').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect(de.classList.contains('expanded')).toBe(false);
+    // Only the country name toggles.
+    de.querySelector('.region-name').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect(de.classList.contains('expanded')).toBe(true);
+  });
+
+  it('collapses only via the country name, not by clicking the names list', () => {
+    const cam = makeCamera(2.0);
+    layer.update(cam, makeRoot(), W, H, cam.position.length());
+    const de = node('DE');
+    de.querySelector('.region-name').dispatchEvent(new window.Event('click', { bubbles: true })); // expand
+    expect(de.classList.contains('expanded')).toBe(true);
+    // Clicking a name in the list must NOT collapse the marker.
+    de.querySelector('.names li').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect(de.classList.contains('expanded')).toBe(true);
+    // The country name still collapses it.
+    de.querySelector('.region-name').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect(de.classList.contains('expanded')).toBe(false);
+  });
+
   it('marks collapsible regions with the .collapsible clickable affordance', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());

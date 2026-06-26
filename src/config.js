@@ -39,6 +39,10 @@ export const FAR_FADE_FLOOR = 0.25;
 // No clamp — labels grow/shrink with the globe. Higher = larger labels overall.
 export const LABEL_REF_DIST = 1.5;
 
+// Minimum people for a region to collapse into a clickable marker. Regions with fewer
+// names always show their list directly (no marker). Consumed in src/labels.js.
+export const MARKER_MIN_COUNT = 3;
+
 // ── Highlight (RUNTIME; src/highlight.js via src/main.js) ────────────────────
 // A highlighted region's dots switch to this color (constant across themes).
 export const HIGHLIGHT_COLOR = '#ff5a1f';

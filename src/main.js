@@ -6,7 +6,7 @@ import {
 import { createPointsObject } from './globe.js';
 import { buildHighlightSet, applyHighlights } from './highlight.js';
 import { createControls } from './controls.js';
-import { createLabelLayer, createCursorLabel } from './labels.js';
+import { createLabelLayer, createCursorLabel, zoomTier, shouldShowHoverLabel } from './labels.js';
 import { createThemeController } from './theme.js';
 import highlights from '../data/highlights.json';
 
@@ -138,8 +138,12 @@ function animate() {
       const id = vertexRegion[h.index];
       if (id) { hovered = id; break; }
     }
-    if (hovered) cursorLabel.show((idToName.get(hovered) || hovered).toUpperCase(), pointerPx.x, pointerPx.y);
-    else cursorLabel.hide();
+    // Only show the cursor pill when zoomed out (far tier); the markers name countries otherwise.
+    if (shouldShowHoverLabel(zoomTier(camera.position.length()), hovered)) {
+      cursorLabel.show((idToName.get(hovered) || hovered).toUpperCase(), pointerPx.x, pointerPx.y);
+    } else {
+      cursorLabel.hide();
+    }
   }
 
   requestAnimationFrame(animate);

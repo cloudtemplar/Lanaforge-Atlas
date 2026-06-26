@@ -24,4 +24,8 @@ describe('createThemeController', () => {
     expect(localStorage.getItem('theme')).toBe(c.current());
     expect(received).toEqual(THEMES[c.current()]);
   });
+  it('exposes the dot colour as a --dot CSS var (for the marker icon)', () => {
+    const c = createThemeController({ onChange: () => {} });
+    expect(document.documentElement.style.getPropertyValue('--dot')).toBe(THEMES[c.current()].dot);
+  });
 });

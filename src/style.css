@@ -43,8 +43,29 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 }
 .people-list.visible { opacity: 1; pointer-events: auto; }
 .people-list .region-name { font-weight: 600; letter-spacing: 0.04em; font-size: 14px; }
+
+/* Only collapsible markers (3+ names) are clickable; a caret signals the affordance. */
+.people-list.collapsible { cursor: pointer; }
+.people-list.collapsible .region-name::after {
+  content: '\2304'; /* ⌄ chevron; points right when collapsed, down when expanded */
+  display: inline-block; margin-left: 5px; font-size: 0.85em; opacity: 0.6;
+  transform: rotate(-90deg); transition: transform 150ms ease;
+}
+.people-list.collapsible.expanded .region-name::after { transform: rotate(0deg); }
 .people-list ul { list-style: none; }
 .people-list .more {
   margin-top: 2px; background: transparent; border: none; color: var(--text);
   opacity: 0.7; cursor: pointer; font-family: inherit; font-size: 12px;
 }
+
+/* Collapsed marker: country name (always shown) + person icon and count below it. */
+.people-list .count-row {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 4px; font-size: 13px; margin-top: 1px;
+}
+.people-list .person-icon { width: 1em; height: 1em; fill: var(--dot); flex: none; }
+
+/* State swap: marker by default, names list when .expanded (no flicker on .region-name). */
+.people-list .names { display: none; }
+.people-list.expanded .count-row { display: none; }
+.people-list.expanded .names { display: block; }

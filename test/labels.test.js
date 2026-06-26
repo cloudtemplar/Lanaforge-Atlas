@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zoomTier, truncateList, cullCollisions, labelScale } from '../src/labels.js';
+import { zoomTier, truncateList, labelScale, buildListHTML, shouldShowHoverLabel } from '../src/labels.js';
 
 describe('zoomTier', () => {
   it('classifies by camera distance', () => {
@@ -33,15 +33,38 @@ describe('labelScale', () => {
   });
 });
 
-describe('cullCollisions', () => {
-  it('drops lower-priority boxes that overlap a kept one', () => {
-    const kept = cullCollisions([
-      { index: 0, x: 0, y: 0, w: 50, h: 20, priority: 10 },   // big/isolated, high priority
-      { index: 1, x: 10, y: 5, w: 50, h: 20, priority: 1 },   // overlaps 0 -> dropped
-      { index: 2, x: 200, y: 200, w: 50, h: 20, priority: 1 },// far away -> kept
-    ]);
-    expect(kept.has(0)).toBe(true);
-    expect(kept.has(1)).toBe(false);
-    expect(kept.has(2)).toBe(true);
+describe('shouldShowHoverLabel', () => {
+  it('shows the cursor pill only at the far tier (labels hidden there)', () => {
+    expect(shouldShowHoverLabel('far', 'DE')).toBe(true);
+  });
+  it('hides it at medium/near (the markers already name the country)', () => {
+    expect(shouldShowHoverLabel('medium', 'DE')).toBe(false);
+    expect(shouldShowHoverLabel('near', 'DE')).toBe(false);
+  });
+  it('hides it when nothing is hovered', () => {
+    expect(shouldShowHoverLabel('far', null)).toBe(false);
+  });
+});
+
+describe('buildListHTML', () => {
+  const html = buildListHTML({ id: 'DE', name: 'Germany' }, ['Zoe','Ana','Cara','Bia','Eve','Dan','Fay']);
+  it('shows the region name (always-visible header)', () => {
+    expect(html).toContain('class="region-name"');
+    expect(html).toContain('>Germany<');
+  });
+  it('shows a person icon and the total people count in the marker row', () => {
+    expect(html).toContain('class="count-row"');
+    expect(html).toContain('person-icon');
+    expect(html).toContain('>7<'); // total people in this region
+  });
+  it('puts the names + "+N more" in a .names wrapper (top-5 shown)', () => {
+    expect(html).toContain('class="names"');
+    expect((html.match(/<li>/g) || []).length).toBe(5);
+    expect(html).toContain('+2 more (7)');
+  });
+  it('omits the "+N more" button when nothing is hidden', () => {
+    const small = buildListHTML({ id: 'X', name: 'X' }, ['Ana', 'Bia']);
+    expect(small).not.toContain('more');
+    expect((small.match(/<li>/g) || []).length).toBe(2);
   });
 });

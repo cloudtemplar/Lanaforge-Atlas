@@ -17,6 +17,7 @@ export function createThemeController({ onChange }) {
     const root = document.documentElement;
     root.style.setProperty('--bg', c.bg);
     root.style.setProperty('--text', c.text);
+    root.style.setProperty('--dot', c.dot); // marker person-icon colour (matches the dots)
     onChange?.(c);
   }
   apply();

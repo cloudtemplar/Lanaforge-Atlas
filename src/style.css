@@ -45,9 +45,11 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 .people-list .region-name { font-weight: 600; letter-spacing: 0.04em; font-size: 14px; }
 
 /* Only the country NAME of a collapsible marker is clickable; a caret signals the affordance.
-   The hit area is kept tight to the name itself (inline-block) so the icon/count and names
-   list are not part of the toggle target. */
-.people-list.collapsible .region-name { display: inline-block; cursor: pointer; }
+   Stays a block (so the icon/count row sits BELOW it), but shrink-wraps to the text and centers
+   so the clickable hit area is tight to the name, not the full label width. */
+.people-list.collapsible .region-name {
+  display: block; width: fit-content; margin-left: auto; margin-right: auto; cursor: pointer;
+}
 .people-list.collapsible .region-name::after {
   content: '\2304'; /* ⌄ chevron; points right when collapsed, down when expanded */
   display: inline-block; margin-left: 5px; font-size: 0.85em; opacity: 0.6;

@@ -41,8 +41,15 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
   opacity: 0;
   transition: opacity 200ms ease;
 }
-.people-list.visible { opacity: 1; pointer-events: auto; }
+.people-list.visible { opacity: 1; }
 .people-list .region-name { font-weight: 600; letter-spacing: 0.04em; font-size: 14px; }
+
+/* The label box stays click-transparent so overlapping neighbours (e.g. Belgium's count row
+   hanging over the Luxembourg label) don't swallow each other's clicks. Only the genuinely
+   interactive bits opt back into pointer events: a collapsible marker's country name (toggle)
+   and the "+N more" button. */
+.people-list.collapsible.visible .region-name,
+.people-list.visible .more { pointer-events: auto; }
 
 /* Only the country NAME of a collapsible marker is clickable; a caret signals the affordance.
    Stays a block (so the icon/count row sits BELOW it), but shrink-wraps to the text and centers

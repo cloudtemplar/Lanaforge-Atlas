@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildRegions } from '../scripts/lib/regions.mjs';
+import { buildRegionIndex, assignRegion } from '../scripts/lib/points.mjs';
 
 // Minimal fake FeatureCollections covering the cases we care about.
 const square = (cx, cy) => ({
@@ -22,6 +23,7 @@ const states = { type: 'FeatureCollection', features: [
   { properties: { iso_3166_2: 'US-CA', name: 'California', iso_a2: 'US' }, geometry: square(-119, 36) }, // parent US state-level -> included
   { properties: { iso_3166_2: 'PT-11', name: 'Lisboa', iso_a2: 'PT' }, geometry: square(-9, 38) },       // parent PT not state-level -> excluded
   { properties: { iso_3166_2: 'PT-20', name: 'Azores', iso_a2: 'PT' }, geometry: square(-27, 38) },     // TERRITORY_REGIONS -> carved out
+  { properties: { iso_3166_2: 'FR-GF', name: 'French Guiana', iso_a2: 'FR' }, geometry: square(-53, 4) }, // carved overseas; overlaps FR's far polygon
 ]};
 
 describe('buildRegions', () => {
@@ -72,6 +74,20 @@ describe('detached territory regions', () => {
   it('orders territory features before the parent country feature', () => {
     const fids = features.map((f) => f.id);
     expect(fids.indexOf('PT-20')).toBeLessThan(fids.indexOf('PT'));
+  });
+});
+
+describe('parent country geometry excludes carved territories', () => {
+  const { features } = buildRegions(countries, states);
+  // Index ONLY the parent country (FR-GF removed) so first-match ordering can't mask
+  // the leak — this asserts FR's own geometry no longer covers the territory.
+  const frOnly = buildRegionIndex(features.filter((f) => f.id === 'FR'));
+
+  it('the parent no longer contains its carved territory area', () => {
+    expect(assignRegion(frOnly, -53, 4)).toBeNull();
+  });
+  it('the parent still contains its mainland', () => {
+    expect(assignRegion(frOnly, 2, 47)).toBe('FR');
   });
 });
 

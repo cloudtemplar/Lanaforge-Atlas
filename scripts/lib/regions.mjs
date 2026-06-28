@@ -1,4 +1,4 @@
-import { geoCentroid, geoArea } from 'd3-geo';
+import { geoCentroid, geoArea, geoContains } from 'd3-geo';
 import { STATE_LEVEL, STATE_COUNTRY_LABEL, TERRITORY_REGIONS } from '../../src/config.js';
 
 const iso2 = (p) => p.ISO_A2_EH || p.ISO_A2 || p.iso_a2_eh || p.iso_a2 || '';
@@ -20,16 +20,44 @@ function ccwPolygon(polygon) {
   return { type: 'Polygon', coordinates: [exterior, ...polygon.slice(1)] };
 }
 
+// Winding-safe point-in-geometry test for a Polygon/MultiPolygon (each ring normalized
+// to CCW so geoContains reads the interior, not the sphere's complement).
+function geomContains(geometry, point) {
+  if (geometry.type === 'Polygon') return geoContains(ccwPolygon(geometry.coordinates), point);
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates.some((poly) => geoContains(ccwPolygon(poly), point));
+  return geoContains(geometry, point);
+}
+
+// Remove from a country's geometry every sub-polygon that lies inside one of its carved
+// territories. The country's 50m polygon(s) for a detached territory are the SAME landmass
+// as the 10m territory feature, so dropping them stops the parent from claiming the
+// territory's dots ANYWHERE — interior, the coast sliver where the 50m/10m boundaries
+// disagree, and the border seam (where the collect-all `assignRegionsNudged` would
+// otherwise still find the parent). Each parent sub-polygon is matched by its OWN centroid
+// falling within a territory's geometry, so a scattered archipelago (Azores, Canaries) —
+// many parent polygons against one multi-island territory — is fully carved, not just the
+// one polygon nearest the territory centroid. Mainland polygons sit outside every territory
+// and are untouched. Only MultiPolygon parents have detached parts to cut.
+function subtractTerritories(geometry, territoryGeometries) {
+  if (geometry.type !== 'MultiPolygon') return geometry;
+  const kept = geometry.coordinates.filter((poly) => {
+    const centroid = geoCentroid(ccwPolygon(poly));
+    return !territoryGeometries.some((tg) => geomContains(tg, centroid));
+  });
+  return { type: 'MultiPolygon', coordinates: kept };
+}
+
 // Centroid of a region's MAIN landmass. For a MultiPolygon, that's the largest polygon
 // by area; for a Polygon, the whole thing. Used for country labels so a country's far
 // detached parts (e.g. France's overseas territories) don't drag the area-weighted
 // whole-geometry centroid out into the ocean.
 function mainlandCentroid(geometry) {
-  if (geometry.type !== 'MultiPolygon' || geometry.coordinates.length < 2) {
-    return geoCentroid({ type: 'Feature', geometry });
-  }
+  const polys = geometry.type === 'MultiPolygon' ? geometry.coordinates
+    : geometry.type === 'Polygon' ? [geometry.coordinates]
+    : null;
+  if (!polys) return geoCentroid({ type: 'Feature', geometry });
   let best = null, bestArea = -Infinity;
-  for (const polygon of geometry.coordinates) {
+  for (const polygon of polys) {
     const area = polyTrueArea(polygon);
     if (area > bestArea) { bestArea = area; best = polygon; }
   }
@@ -44,6 +72,7 @@ export function buildRegions(countriesFC, statesFC) {
 
   const territorySet = new Set(TERRITORY_REGIONS);
   const countryNameById = new Map(); // code -> display name, for prefixing sub-region names
+  const territoryGeomsByParent = new Map(); // parent code -> [territory geometry, ...]
 
   // Non-state-level countries -> admin-0 region.
   for (const f of countriesFC.features) {
@@ -74,12 +103,23 @@ export function buildRegions(countriesFC, statesFC) {
     };
 
     if (STATE_LEVEL.includes(parent)) addSub(stateFeatures);
-    else if (territorySet.has(code)) addSub(territoryFeatures);
+    else if (territorySet.has(code)) {
+      addSub(territoryFeatures);
+      if (!territoryGeomsByParent.has(parent)) territoryGeomsByParent.set(parent, []);
+      territoryGeomsByParent.get(parent).push(f.geometry);
+    }
   }
 
-  // Territory features FIRST: assignRegion is first-match-wins, so a point inside a
-  // territory resolves to the territory id before the parent country's admin-0 polygon
-  // (which still nominally contains the island) can claim it.
+  // Cut each carved territory's landmass out of its parent country's geometry so the
+  // parent stops claiming the territory's dots at every leak path (see subtractTerritories).
+  for (const cf of countryFeatures) {
+    const geoms = territoryGeomsByParent.get(cf.id);
+    if (geoms) cf.geometry = subtractTerritories(cf.geometry, geoms);
+  }
+
+  // Territory features FIRST: assignRegion is first-match-wins, so any point the 10m
+  // territory polygon covers beyond the parent's now-cut boundary still resolves to the
+  // territory id rather than a neighbouring country.
   const features = [...territoryFeatures, ...countryFeatures, ...stateFeatures];
   return { regions, features };
 }

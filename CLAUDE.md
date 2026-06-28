@@ -35,10 +35,17 @@ A short list of **detached territories** (`TERRITORY_REGIONS` in `src/config.js`
 Madeira `PT-30`, Canaries `ES-GC`/`ES-TF`, French overseas `FR-GF`/`FR-GP`/`FR-MQ`/`FR-RE`/`FR-YT`,
 Dutch Caribbean `NL-BQ1`/`NL-BQ2`/`NL-BQ3`) is carved out of the parent country into its own ISO
 3166-2 region, so highlighting e.g. `PT` lights only mainland Portugal, not the Azores. Mechanism:
-`buildRegions` emits each from the 10m states layer and orders territory features FIRST so
-`assignRegion` (first-match) resolves their points before the parent country's admin-0 polygon. The
-parent country's geometry is NOT recut, so its label centroid is unchanged and a stray coast dot may
-occasionally fall through to the parent at the territory boundary.
+`buildRegions` emits each from the 10m states layer, then **cuts the territory's landmass out of
+its parent country's geometry** (`subtractTerritories` in `scripts/lib/regions.mjs`): every parent
+admin-0 sub-polygon whose own centroid falls inside a carved territory's geometry is dropped, so a
+scattered archipelago (Azores, Canaries) is fully removed, not just the polygon nearest the
+territory centroid. This is the real fix — it stops the parent claiming the territory's dots on
+ALL paths: interior, the coast sliver where the 50m coast and 10m territory boundaries disagree,
+and the border seam (where the collect-all `assignRegionsNudged` would otherwise still find the
+parent). The parent's label centroid is unaffected (`mainlandCentroid` already keys on the largest
+polygon). Territory features are still ordered FIRST in the feature array so `assignRegion`
+(first-match) resolves any point the 10m territory polygon covers beyond the parent's now-cut
+boundary to the territory rather than a neighbouring country.
 
 ## Dot system (v2 — the current visual design)
 Spec: `docs/superpowers/specs/2026-06-25-lanaforge-atlas-dot-style.md`.

@@ -1,12 +1,4 @@
 {
   "RS": ["Hoody 🥇"],
-  "GB": ["Test", "Test2"],
-  "FR": ["Keiina"],
-  "PT": ["Continental"],
-  "PT-20": ["Azores tester"],
-  "PT-30": ["Madeira tester"],
-  "ES-GC": ["Canarias tester"],
-  "FR-GF": ["Guiana tester"],
-  "FR-RE": ["Réunion tester"],
-  "NL-BQ1": ["Bonaire tester"]
+  "FR": ["Keiina"]
 }

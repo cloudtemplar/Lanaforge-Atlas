@@ -51,6 +51,12 @@ export const FAR_FADE_FLOOR = 0.25;
 // No clamp — labels grow/shrink with the globe. Higher = larger labels overall.
 export const LABEL_REF_DIST = 1.5;
 
+// Default collapse state for every region's people names list (RUNTIME; src/labels.js).
+// true  = every marker starts COLLAPSED (header + count only; expand on click) — the default.
+// false = every marker starts EXPANDED (top-5 names shown up front; still toggles + "+N more").
+// On zoom-out a marker resets to whichever state this flag selects.
+export const COLLAPSE_ALL_NAME_LISTS = false;
+
 // ── Highlight (RUNTIME; src/highlight.js via src/main.js) ────────────────────
 // A highlighted region's dots switch to this color (constant across themes).
 export const HIGHLIGHT_COLOR = '#ff5a1f';

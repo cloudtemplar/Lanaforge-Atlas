@@ -65,11 +65,12 @@ the faint base while keeping the coast>border>land hierarchy. Highlight color is
 ## People overlay (labels)
 HTML/CSS overlay (`src/labels.js` + `src/style.css`) listing people met per highlighted region, gated by
 `zoomTier`:
-- **Every** region is a collapsed **marker**: header = country name + people **count** (left of a caret),
-  no person icon. Click the **header only** (the sole click target) to expand to country + top-5 names +
-  "+N more"; click again to collapse. The names list is NOT clickable (only its "+N more" button). No
-  minimum-count threshold. Markers expand independently; auto-reset to collapsed when the label fades on
-  zoom-out.
+- **Every** region is a **marker**: header = country name + people **count** (left of a caret), no person
+  icon. Click the **header only** (the sole click target) to toggle the country + top-5 names + "+N more"
+  list; the names list is NOT clickable (only its "+N more" button). No minimum-count threshold. Markers
+  toggle independently; on zoom-out each auto-resets to its default state. The **default** state is set by
+  `COLLAPSE_ALL_NAME_LISTS` (`src/config.js`): `true` = every marker starts collapsed (header only),
+  `false` = every marker starts expanded (top-5 shown up front).
 - Labels **fade in/out**, **world-anchored** (`labelScale(viewDepth, LABEL_REF_DIST)`, same semantics as
   dots' `uRefDist`). **No collision culling** — only far-limb + off-screen culls.
 - Hover **cursor pill** (`createCursorLabel`) shows a region name under the pointer, but only at the far
@@ -138,6 +139,7 @@ All constants in `src/config.js` (imported by runtime + build scripts). **Runtim
 | Camera start / rotation / raycast | `CAMERA_START_DIST` (also seeds `uCamDist`), `ROTATION_SPEED`, `RAYCAST_THRESHOLD` | `src/main.js` | Runtime |
 | Zoom limits / label tiers | `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR` | runtime | Runtime |
 | Label world-anchor | `LABEL_REF_DIST` | `src/labels.js` | Runtime |
+| Names-list default collapse | `COLLAPSE_ALL_NAME_LISTS` (true=collapsed, false=expanded) | `src/labels.js` | Runtime |
 | Dot spacing per category | `DOT_SPACING` {coast,land,border} | `generatePoints` (`points.mjs`) | Build |
 | Hierarchy thinning | `THINNING.clearanceDeg` / `.landClearanceDeg` (lower = land tighter) / `.coastGapDeg` (coast density) | `thinByHierarchy` | Build |
 | Region probe nudge | `REGION_PROBE_NUDGE_DEG` | `assignRegion*Nudged` (`points.mjs`) | Build |

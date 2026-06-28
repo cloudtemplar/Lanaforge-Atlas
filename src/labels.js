@@ -1,4 +1,4 @@
-import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS, LABEL_REF_DIST } from './config.js';
+import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS, LABEL_REF_DIST, COLLAPSE_ALL_NAME_LISTS } from './config.js';
 import { latLonToVector3, vector3ToScreen } from './geo.js';
 
 function escapeHtml(s) {
@@ -77,8 +77,8 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
   const active = regions.filter((r) => highlightSet.has(r.id));
   const byId = new Map(active.map((r) => [r.id, r]));
 
-  // Every highlighted region is a clickable marker: it defaults to a collapsed header
-  // (country name + people count + caret) and expands its full names list on click.
+  // Every highlighted region is a clickable marker. COLLAPSE_ALL_NAME_LISTS picks the default
+  // state: collapsed header (country name + count + caret) or pre-expanded with its names list.
   const nodes = new Map();
   for (const r of active) {
     const el = document.createElement('div');
@@ -90,16 +90,27 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
   }
 
   const builtSet = new Set();   // structure built once (never torn down)
-  const expanded = new Set();   // ids currently showing the full names list
+  // ids currently showing the names list. Seeded from COLLAPSE_ALL_NAME_LISTS: when the flag is
+  // false every marker starts expanded, so the default set holds all active ids.
+  const expanded = new Set(COLLAPSE_ALL_NAME_LISTS ? [] : active.map((r) => r.id));
+  const dirty = new Set();      // ids whose state the user changed away from the default
 
   const applyOpen = (el, id) => el.classList.toggle('expanded', expanded.has(id));
 
-  // Collapse a marker back to its fresh state: drop expansion and reset .names to top-5 + "+N more".
-  function collapse(el, id) {
-    expanded.delete(id);
-    el.classList.remove('expanded');
+  // Rewrite the .names block back to the top-5 + "+N more" view (undoing any "+N more" reveal).
+  function resetNames(el, id) {
     const namesEl = el.querySelector('.names');
     if (namesEl) namesEl.innerHTML = namesInnerCollapsed(byId.get(id), peopleByRegion[id] || []);
+  }
+
+  // Restore a marker to the flag-selected DEFAULT (expanded or collapsed) + top-5 names. Called
+  // when a label fades out, so it re-enters in its default state (never stuck on the user's last toggle).
+  function resetToDefault(el, id) {
+    if (COLLAPSE_ALL_NAME_LISTS) expanded.delete(id);
+    else expanded.add(id);
+    el.classList.toggle('expanded', expanded.has(id));
+    resetNames(el, id);
+    dirty.delete(id);
   }
 
   // Single delegated listener: "+N more" reveals all names; clicking the COUNTRY NAME header
@@ -108,9 +119,11 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
   overlayEl.addEventListener('click', (e) => {
     const moreBtn = e.target.closest('button.more');
     if (moreBtn) {
-      const el = nodes.get(moreBtn.dataset.region);
+      const id = moreBtn.dataset.region;
+      const el = nodes.get(id);
       const namesEl = el && el.querySelector('.names');
-      if (namesEl) namesEl.innerHTML = namesInnerAll(peopleByRegion[moreBtn.dataset.region] || []);
+      if (namesEl) namesEl.innerHTML = namesInnerAll(peopleByRegion[id] || []);
+      dirty.add(id);
       return;
     }
     const nameEl = e.target.closest('.region-name');
@@ -119,16 +132,17 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     if (!listEl) return;
     const id = listEl.dataset.region;
     if (!nodes.has(id)) return;
-    if (expanded.has(id)) collapse(listEl, id);
+    if (expanded.has(id)) { expanded.delete(id); resetNames(listEl, id); }
     else expanded.add(id);
+    dirty.add(id);
     applyOpen(listEl, id);
   });
 
-  // Hide a label: fade it out and, if it was expanded, reset it so it re-enters collapsed
-  // (never stuck open after a zoom-out).
+  // Hide a label: fade it out and, if the user moved it off its default, reset it so it
+  // re-enters in the default state (never stuck on the user's last toggle after a zoom-out).
   function hide(el, id) {
     el.classList.remove('visible');
-    if (expanded.has(id)) collapse(el, id);
+    if (dirty.has(id)) resetToDefault(el, id);
   }
 
   function update(camera, root, width, height, cameraDistance) {

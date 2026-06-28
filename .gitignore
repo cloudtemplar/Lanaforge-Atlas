@@ -3,7 +3,6 @@ dist/
 scripts/geo-src/
 public/data/
 .claude/
-data/
 docs/superpowers/
 .playwright-mcp/
 .wrangler/

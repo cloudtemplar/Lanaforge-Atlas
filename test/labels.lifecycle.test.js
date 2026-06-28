@@ -1,6 +1,15 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+
+// These lifecycle tests describe the collapsed-by-default interaction model, so they pin
+// COLLAPSE_ALL_NAME_LISTS = true here (the rest of config.js is kept real). This decouples them
+// from the committed flag value — flipping it in config.js can never make these tests fail.
+vi.mock('../src/config.js', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, COLLAPSE_ALL_NAME_LISTS: true };
+});
+
 import { createLabelLayer } from '../src/labels.js';
 import { LABEL_REF_DIST } from '../src/config.js';
 

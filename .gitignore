@@ -1,8 +1,5 @@
 node_modules/
 dist/
-scripts/geo-src/
-public/data/
-.claude/
 docs/superpowers/
 .playwright-mcp/
 .wrangler/

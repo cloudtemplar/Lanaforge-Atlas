@@ -1,4 +1,4 @@
-import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS, LABEL_REF_DIST, MARKER_MIN_COUNT } from './config.js';
+import { TIER_FAR, TIER_NEAR, GLOBE_RADIUS, LABEL_REF_DIST } from './config.js';
 import { latLonToVector3, vector3ToScreen } from './geo.js';
 
 function escapeHtml(s) {
@@ -33,11 +33,6 @@ export function truncateList(names, limit = 5) {
   return { shown, total: sorted.length, hiddenCount: Math.max(0, sorted.length - limit) };
 }
 
-// Inline person glyph; coloured via CSS (.person-icon { fill: var(--dot) }) to match the dots.
-const PERSON_ICON =
-  '<svg class="person-icon" viewBox="0 0 24 24" aria-hidden="true">' +
-  '<path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>';
-
 // The names block (top-5 + "+N more"); rebuilt on collapse/expand-all without touching the header.
 function namesInnerCollapsed(region, allNames) {
   const { shown, total, hiddenCount } = truncateList(allNames);
@@ -52,14 +47,13 @@ function namesInnerAll(allNames) {
   return `<ul>${sorted.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`;
 }
 
-// Full two-state label, built ONCE per region. The .region-name header and .count-row marker
-// are never rebuilt (no flicker); expand/collapse only toggles the .expanded class, and the
-// .names wrapper is the only part rewritten when names change.
+// Full two-state label, built ONCE per region. The .region-name header (country name + a
+// people .count just left of the caret) is never rebuilt (no flicker); expand/collapse only
+// toggles the .expanded class, and the .names wrapper is the only part rewritten when names change.
 export function buildListHTML(region, allNames) {
   const total = allNames.length;
   return (
-    `<div class="region-name">${escapeHtml(region.name)}</div>` +
-    `<div class="count-row">${PERSON_ICON}<span class="count">${total}</span></div>` +
+    `<div class="region-name">${escapeHtml(region.name)}<span class="count">${total}</span></div>` +
     `<div class="names">${namesInnerCollapsed(region, allNames)}</div>`
   );
 }
@@ -83,18 +77,12 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
   const active = regions.filter((r) => highlightSet.has(r.id));
   const byId = new Map(active.map((r) => [r.id, r]));
 
-  // A region collapses into a clickable marker only if it has enough people; smaller ones
-  // are always shown as a plain list (no marker, not toggleable).
-  const collapsibleIds = new Set(
-    active.filter((r) => (peopleByRegion[r.id] || []).length >= MARKER_MIN_COUNT).map((r) => r.id),
-  );
-
-  // One element per highlighted region, reused across frames. Collapsible regions default to
-  // a marker (country + person-icon count) and carry .collapsible (the click affordance).
+  // Every highlighted region is a clickable marker: it defaults to a collapsed header
+  // (country name + people count + caret) and expands its full names list on click.
   const nodes = new Map();
   for (const r of active) {
     const el = document.createElement('div');
-    el.className = collapsibleIds.has(r.id) ? 'people-list collapsible' : 'people-list';
+    el.className = 'people-list collapsible';
     el.style.position = 'absolute';
     el.dataset.region = r.id;
     overlayEl.appendChild(el);
@@ -102,11 +90,9 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
   }
 
   const builtSet = new Set();   // structure built once (never torn down)
-  const expanded = new Set();   // collapsible ids currently showing the full names list
+  const expanded = new Set();   // ids currently showing the full names list
 
-  // Open = below-threshold (always a list) OR a collapsible region the user expanded.
-  const isOpen = (id) => !collapsibleIds.has(id) || expanded.has(id);
-  const applyOpen = (el, id) => el.classList.toggle('expanded', isOpen(id));
+  const applyOpen = (el, id) => el.classList.toggle('expanded', expanded.has(id));
 
   // Collapse a marker back to its fresh state: drop expansion and reset .names to top-5 + "+N more".
   function collapse(el, id) {
@@ -116,10 +102,9 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     if (namesEl) namesEl.innerHTML = namesInnerCollapsed(byId.get(id), peopleByRegion[id] || []);
   }
 
-  // Single delegated listener: "+N more" reveals all names; clicking the COUNTRY NAME toggles it.
-  // Only the .region-name is a toggle target — the icon/count marker and the names list are not,
-  // so the clickable hit area stays tight to the country label (the list stays non-interactive
-  // apart from its own "+N more" button).
+  // Single delegated listener: "+N more" reveals all names; clicking the COUNTRY NAME header
+  // (country name + count) toggles it. The names list is NOT a toggle target, so the clickable
+  // hit area stays tight to the header (the list stays non-interactive apart from "+N more").
   overlayEl.addEventListener('click', (e) => {
     const moreBtn = e.target.closest('button.more');
     if (moreBtn) {
@@ -133,17 +118,17 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
     const listEl = nameEl.closest('.people-list');
     if (!listEl) return;
     const id = listEl.dataset.region;
-    if (!nodes.has(id) || !collapsibleIds.has(id)) return; // below-threshold: not toggleable
+    if (!nodes.has(id)) return;
     if (expanded.has(id)) collapse(listEl, id);
     else expanded.add(id);
     applyOpen(listEl, id);
   });
 
-  // Hide a label: fade it out and, if it was an expanded marker, reset it so it re-enters
-  // collapsed (respects the zoom logic; never stuck open after a zoom-out).
+  // Hide a label: fade it out and, if it was expanded, reset it so it re-enters collapsed
+  // (never stuck open after a zoom-out).
   function hide(el, id) {
     el.classList.remove('visible');
-    if (collapsibleIds.has(id) && expanded.has(id)) collapse(el, id);
+    if (expanded.has(id)) collapse(el, id);
   }
 
   function update(camera, root, width, height, cameraDistance) {
@@ -180,7 +165,7 @@ export function createLabelLayer({ overlayEl, regions, highlightSet, peopleByReg
       // World-anchored size: scale by the centroid's view-space depth (matches the dots).
       const viewDepth = -world.clone().applyMatrix4(camera.matrixWorldInverse).z;
       const scale = labelScale(viewDepth, LABEL_REF_DIST);
-      applyOpen(el, r.id); // below-threshold regions show their list; collapsible reflect toggle state
+      applyOpen(el, r.id); // reflect the marker's collapsed/expanded toggle state
       el.classList.add('visible');
       el.style.left = `${Math.round(s.x)}px`;
       el.style.top = `${Math.round(s.y)}px`;

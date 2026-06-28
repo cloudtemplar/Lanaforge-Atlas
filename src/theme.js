@@ -17,7 +17,7 @@ export function createThemeController({ onChange }) {
     const root = document.documentElement;
     root.style.setProperty('--bg', c.bg);
     root.style.setProperty('--text', c.text);
-    root.style.setProperty('--dot', c.dot); // marker person-icon colour (matches the dots)
+    root.style.setProperty('--dot', c.dot); // dot accent colour token (matches the rendered dots)
     root.dataset.theme = theme; // CSS source of truth for the sun/moon flip toggle
     onChange?.(c);
   }

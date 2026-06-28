@@ -52,10 +52,13 @@ describe('buildListHTML', () => {
     expect(html).toContain('class="region-name"');
     expect(html).toContain('>Germany<');
   });
-  it('shows a person icon and the total people count in the marker row', () => {
-    expect(html).toContain('class="count-row"');
-    expect(html).toContain('person-icon');
+  it('shows the total people count inside the name header, no person icon/count-row', () => {
+    expect(html).not.toContain('person-icon');
+    expect(html).not.toContain('count-row');
+    expect(html).toContain('class="count"');
     expect(html).toContain('>7<'); // total people in this region
+    // the count lives inside the .region-name header (just left of the caret)
+    expect(html).toMatch(/class="region-name">Germany<span class="count">7<\/span>/);
   });
   it('puts the names + "+N more" in a .names wrapper (top-5 shown)', () => {
     expect(html).toContain('class="names"');

@@ -86,12 +86,13 @@ keeping the coast > border > land opacity hierarchy. The highlight color is cons
 ## People overlay (labels)
 HTML/CSS overlay (`src/labels.js` + `src/style.css`) listing the people met per highlighted region,
 drawn over the dots and gated by zoom tier (`zoomTier`). Per region:
-- Regions with **>= `MARKER_MIN_COUNT` names** collapse to a small **marker** (country name + a
-  `--dot`-coloured person icon + count). Click the **country name only** (the sole click target — a
-  small caret signals it) to expand the full list (country + top-5 names + "+N more"); click again to
-  collapse. The names list and icon are NOT click targets (only its own "+N more" button is). Smaller
-  regions show their list directly (no marker, not collapsible). Multiple regions expand independently;
-  an expanded marker auto-resets to collapsed when its label fades out on zoom-out.
+- **Every** region collapses to a small **marker**: a header of the country name + a people **count**
+  (sitting just left of the caret) — no person icon. Click the **header only** (country name + count;
+  the sole click target — a small caret signals it) to expand the full list (country + top-5 names +
+  "+N more"); click again to collapse. The names list is NOT a click target (only its own "+N more"
+  button is). There is no minimum-count threshold — even a 1-name region is a collapsed marker.
+  Multiple regions expand independently; an expanded marker auto-resets to collapsed when its label
+  fades out on zoom-out.
 - Labels **fade in/out** and are **world-anchored**: size = `labelScale(viewDepth, LABEL_REF_DIST)`
   (same semantics as the dots' `uRefDist`), so they grow on zoom-in. **No collision culling** — only
   far-hemisphere limb + off-screen culls; every front-facing region is shown (markers separate on zoom).
@@ -103,7 +104,7 @@ drawn over the dots and gated by zoom tier (`zoomTier`). Per region:
 - `src/config.js` — **the single home for all tuning/structure constants** (see "Tunable visual
   knobs"): geometry/camera (`GLOBE_RADIUS`, `ZOOM_MIN`/`ZOOM_MAX`, `TIER_FAR`/`TIER_NEAR`,
   `CAMERA_START_DIST`), dot style (`CATEGORY_STYLE`, `CATEGORY_FALLBACK`, `DOT_REF_DIST`,
-  `FAR_FADE_FLOOR`), people overlay (`LABEL_REF_DIST`, `MARKER_MIN_COUNT`, `STATE_COUNTRY_LABEL`),
+  `FAR_FADE_FLOOR`), people overlay (`LABEL_REF_DIST`, `STATE_COUNTRY_LABEL`),
   highlight (`HIGHLIGHT_COLOR`, `HIGHLIGHT_OPACITY_BOOST`), interaction
   (`ROTATION_SPEED`, `RAYCAST_THRESHOLD`), build-time spacing/thinning (`DOT_SPACING`, `THINNING`,
   `REGION_PROBE_NUDGE_DEG`), `STATE_LEVEL`, and `SOURCES` (5 Natural Earth URLs: admin-0 countries

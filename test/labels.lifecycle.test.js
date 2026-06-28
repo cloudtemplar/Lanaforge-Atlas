@@ -7,15 +7,16 @@ import { LABEL_REF_DIST } from '../src/config.js';
 // Regions whose centroids map near world (0,0,1): lat~0, lon~-90 (see geo.js mapping).
 // They project to nearly the same screen point -> would collide under the old cull.
 const regions = [
-  { id: 'DE', name: 'Germany', centroid: { lat: 0, lon: -90 } },   // 7 names -> collapsible
-  { id: 'BE', name: 'Belgium', centroid: { lat: 0.4, lon: -90 } }, // 4 names -> collapsible
-  { id: 'LU', name: 'Luxembourg', centroid: { lat: 0.8, lon: -90 } }, // 2 names -> NOT collapsible
+  { id: 'DE', name: 'Germany', centroid: { lat: 0, lon: -90 } },   // 7 names
+  { id: 'BE', name: 'Belgium', centroid: { lat: 0.4, lon: -90 } }, // 4 names
+  { id: 'LU', name: 'Luxembourg', centroid: { lat: 0.8, lon: -90 } }, // 2 names
 ];
 const peopleByRegion = {
   DE: ['Ana', 'Bia', 'Cara', 'Dan', 'Eve', 'Fay', 'Gus'], // 7 -> "+2 more"
   BE: ['Hugo', 'Ines', 'Jan', 'Kim'],                      // 4
-  LU: ['Leo', 'Mia'],                                      // 2 -> shown as a list, no marker
+  LU: ['Leo', 'Mia'],                                      // 2
 };
+// Every region is a collapsible marker now (no minimum-count threshold).
 
 function makeCamera(dist) {
   const cam = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
@@ -54,15 +55,17 @@ describe('people markers (two-state label)', () => {
     ({ overlay, layer, node } = setup());
   });
 
-  it('defaults to a collapsed marker (count-row visible, not expanded)', () => {
+  it('defaults to a collapsed marker (count in the header, not expanded)', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());
     const de = node('DE');
     expect(de.classList.contains('visible')).toBe(true);
+    expect(de.classList.contains('collapsible')).toBe(true);
     expect(de.classList.contains('expanded')).toBe(false);
-    expect(de.querySelector('.count-row')).toBeTruthy();
-    expect(de.querySelector('.count-row .person-icon')).toBeTruthy();
-    expect(de.querySelector('.count-row').textContent).toContain('7');
+    // count lives in the name header; no person icon / separate count-row
+    expect(de.querySelector('.count-row')).toBeNull();
+    expect(de.querySelector('.person-icon')).toBeNull();
+    expect(de.querySelector('.region-name .count').textContent).toBe('7');
     // world-anchored scale still applied (viewDepth=1 -> scale=LABEL_REF_DIST)
     expect(de.style.transform).toContain(`scale(${LABEL_REF_DIST})`);
   });
@@ -74,37 +77,31 @@ describe('people markers (two-state label)', () => {
     expect(node('BE').classList.contains('visible')).toBe(true);
   });
 
-  it('collapses to a marker only when there are 3+ names', () => {
+  it('makes every region a collapsed marker regardless of name count', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());
-    // DE (7) and BE (4) are collapsible -> default collapsed marker.
-    expect(node('DE').classList.contains('collapsible')).toBe(true);
-    expect(node('DE').classList.contains('expanded')).toBe(false);
-    expect(node('BE').classList.contains('collapsible')).toBe(true);
-    expect(node('BE').classList.contains('expanded')).toBe(false);
-    // LU (2) is below the threshold -> shown directly as a list, never a marker.
-    expect(node('LU').classList.contains('collapsible')).toBe(false);
-    expect(node('LU').classList.contains('expanded')).toBe(true);
-    expect(node('LU').querySelectorAll('.names li').length).toBe(2);
+    for (const id of ['DE', 'BE', 'LU']) {
+      expect(node(id).classList.contains('collapsible')).toBe(true);
+      expect(node(id).classList.contains('expanded')).toBe(false);
+    }
   });
 
-  it('ignores clicks on a below-threshold region (stays an open list)', () => {
+  it('expands a small (2-name) region on click, just like the larger ones', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());
     const lu = node('LU');
+    expect(lu.classList.contains('expanded')).toBe(false);
     lu.querySelector('.region-name').dispatchEvent(new window.Event('click', { bubbles: true }));
-    expect(lu.classList.contains('expanded')).toBe(true); // unchanged — no marker to collapse into
+    expect(lu.classList.contains('expanded')).toBe(true);
+    expect(lu.querySelectorAll('.names li').length).toBe(2);
   });
 
-  it('expands only via the country name, not the icon/count area', () => {
+  it('toggles via the name header (count included), not the names list', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());
     const de = node('DE');
-    // Clicking the collapsed marker's icon/count row must NOT toggle it.
-    de.querySelector('.count-row').dispatchEvent(new window.Event('click', { bubbles: true }));
-    expect(de.classList.contains('expanded')).toBe(false);
-    // Only the country name toggles.
-    de.querySelector('.region-name').dispatchEvent(new window.Event('click', { bubbles: true }));
+    // The count lives in the header, so clicking it toggles like the name.
+    de.querySelector('.region-name .count').dispatchEvent(new window.Event('click', { bubbles: true }));
     expect(de.classList.contains('expanded')).toBe(true);
   });
 
@@ -122,11 +119,11 @@ describe('people markers (two-state label)', () => {
     expect(de.classList.contains('expanded')).toBe(false);
   });
 
-  it('marks collapsible regions with the .collapsible clickable affordance', () => {
+  it('marks every region with the .collapsible clickable affordance', () => {
     const cam = makeCamera(2.0);
     layer.update(cam, makeRoot(), W, H, cam.position.length());
     expect(node('DE').classList.contains('collapsible')).toBe(true);
-    expect(node('LU').classList.contains('collapsible')).toBe(false);
+    expect(node('LU').classList.contains('collapsible')).toBe(true);
   });
 
   it('expands to the names list on click and collapses on a second click', () => {
@@ -156,7 +153,9 @@ describe('people markers (two-state label)', () => {
 
     expect(name2).toBe(name1);
     expect(name3).toBe(name1);
-    expect(name1.textContent).toBe('Germany');
+    // header preserved (name + count); first child node is the country-name text
+    expect(name1.firstChild.textContent).toBe('Germany');
+    expect(name1.querySelector('.count').textContent).toBe('7');
   });
 
   it('"+N more" reveals all names within the expanded list', () => {

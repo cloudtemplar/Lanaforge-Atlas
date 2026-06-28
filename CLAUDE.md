@@ -31,6 +31,15 @@ Region ids are **ISO 3166**: country = alpha-2 (`JP`, `FR`, `PT`); sub-region = 
 Europe/UK, AR, AU) is a whole-country admin-0 region. `iso-reference.md` (generated) lists all
 valid ids.
 
+A short list of **detached territories** (`TERRITORY_REGIONS` in `src/config.js` — Azores `PT-20`,
+Madeira `PT-30`, Canaries `ES-GC`/`ES-TF`, French overseas `FR-GF`/`FR-GP`/`FR-MQ`/`FR-RE`/`FR-YT`,
+Dutch Caribbean `NL-BQ1`/`NL-BQ2`/`NL-BQ3`) is carved out of the parent country into its own ISO
+3166-2 region, so highlighting e.g. `PT` lights only mainland Portugal, not the Azores. Mechanism:
+`buildRegions` emits each from the 10m states layer and orders territory features FIRST so
+`assignRegion` (first-match) resolves their points before the parent country's admin-0 polygon. The
+parent country's geometry is NOT recut, so its label centroid is unchanged and a stray coast dot may
+occasionally fall through to the parent at the territory boundary.
+
 ## Dot system (v2 — the current visual design)
 Spec: `docs/superpowers/specs/2026-06-25-lanaforge-atlas-dot-style.md`.
 **Round** dots (custom `THREE.ShaderMaterial`, per-vertex `aSize`/`aOpacity`, round-discard in
@@ -152,6 +161,8 @@ build-time scripts). Below: the config export → where it's consumed.
   in `generatePoints`. Bigger = more aggressive removal. **Build-time — re-run `npm run data`.**
 - **Region probe nudge** — `REGION_PROBE_NUDGE_DEG`; consumed by `assignRegion*Nudged`
   (`scripts/lib/points.mjs`). **Build-time.**
+- **Detached territories** — `TERRITORY_REGIONS` (list of ISO 3166-2 codes carved into their own
+  region); consumed by `buildRegions` (`scripts/lib/regions.mjs`). **Build-time — re-run `npm run data`.**
 - **Dot size attenuation** (world-anchored growth on zoom) — `DOT_REF_DIST` → `uRefDist` uniform
   (`src/globe.js`); lower = smaller dots overall. Formula `gl_PointSize = aSize*uPixelRatio*(uRefDist/-mv.z)`.
 - **Far-hemisphere fade** — `FAR_FADE_FLOOR` → the `mix(...)` floor in the fragment shader

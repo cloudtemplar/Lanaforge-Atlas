@@ -243,9 +243,9 @@ Use these ids as keys in `data/highlights.json`.
 | ZM | Zambia |
 | ZW | Zimbabwe |
 
-## Sub-regions of the state-level countries (ISO 3166-2)
+## Sub-regions (ISO 3166-2)
 
-Parent countries: BR, US, CA
+State-level countries (BR, US, CA) are split into all their sub-regions; a few detached territories of other countries (Azores, Madeira, Canaries, French overseas, Dutch Caribbean) are also separated.
 
 | id | name |
 |----|------|
@@ -289,6 +289,18 @@ Parent countries: BR, US, CA
 | CA-QC | Canada - Québec |
 | CA-SK | Canada - Saskatchewan |
 | CA-YT | Canada - Yukon |
+| ES-GC | Spain - Las Palmas |
+| ES-TF | Spain - Santa Cruz de Tenerife |
+| FR-GF | France - Guyane française |
+| FR-GP | France - Guadeloupe |
+| FR-MQ | France - Martinique |
+| FR-RE | France - La Réunion |
+| FR-YT | France - Mayotte |
+| NL-BQ1 | Netherlands - Bonaire |
+| NL-BQ2 | Netherlands - Saba |
+| NL-BQ3 | Netherlands - St. Eustatius |
+| PT-20 | Portugal - Azores |
+| PT-30 | Portugal - Madeira |
 | US-AK | US - Alaska |
 | US-AL | US - Alabama |
 | US-AR | US - Arkansas |
@@ -328,6 +340,7 @@ Parent countries: BR, US, CA
 | US-OK | US - Oklahoma |
 | US-OR | US - Oregon |
 | US-PA | US - Pennsylvania |
+| US-PR | US - Puerto Rico |
 | US-RI | US - Rhode Island |
 | US-SC | US - South Carolina |
 | US-SD | US - South Dakota |

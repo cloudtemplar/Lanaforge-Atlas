@@ -15,6 +15,18 @@ export const STATE_LEVEL = ['BR', 'US', 'CA'];
 // (BUILD-TIME; consumed by buildRegions in scripts/lib/regions.mjs. Re-run `npm run data`.)
 export const STATE_COUNTRY_LABEL = { BR: 'Brazil', US: 'US', CA: 'Canada' };
 
+// Detached territories carved out of their parent country into their OWN ISO 3166-2
+// region (so highlighting the country no longer lights its distant territories). Each
+// code is an admin-1 unit from the 10m states layer; it is matched by iso_3166_2 and
+// indexed BEFORE its parent country so its points resolve to the territory id.
+// (BUILD-TIME; consumed by buildRegions in scripts/lib/regions.mjs. Re-run `npm run data`.)
+export const TERRITORY_REGIONS = [
+  'PT-20', 'PT-30',                              // Azores, Madeira
+  'ES-GC', 'ES-TF',                              // Canary Islands (Las Palmas, S.C. de Tenerife)
+  'FR-GF', 'FR-GP', 'FR-MQ', 'FR-RE', 'FR-YT',   // French overseas (Guiana, Guadeloupe, Martinique, Réunion, Mayotte)
+  'NL-BQ1', 'NL-BQ2', 'NL-BQ3',                  // Dutch Caribbean (Bonaire, Saba, St. Eustatius)
+];
+
 // ── Dot visual style (RUNTIME; consumed in src/globe.js) ─────────────────────
 // CSS-px size + base opacity per category. coast = biggest/strongest, land =
 // small/faint, border = land-sized but a touch more opaque (reads as a seam).

@@ -67,6 +67,26 @@ describe('assignRegionsNudged', () => {
 });
 
 // ---------------------------------------------------------------------------
+describe('territory carve via index priority', () => {
+  // Parent country PT covers lon[-15,-5] lat[35,45]; territory PT-20 is a smaller
+  // square INSIDE it. With the territory indexed first, a point in the overlap must
+  // resolve to the territory, while a point only in the country resolves to PT.
+  const idx = buildRegionIndex([
+    { id: 'PT-20', geometry: square(-10, 40, 2) }, // territory FIRST
+    { id: 'PT',    geometry: square(-10, 40, 5) }, // country contains the territory area
+  ]);
+
+  it('resolves an overlap point to the territory id', () => {
+    expect(assignRegion(idx, -10, 40)).toBe('PT-20');
+  });
+
+  it('resolves a country-only point to the country id', () => {
+    // (-14, 44) is inside PT [-15,-5]x[35,45] but outside PT-20 [-12,-8]x[38,42].
+    expect(assignRegion(idx, -14, 44)).toBe('PT');
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe('generateLandPoints', () => {
   const pts = generateLandPoints(index, 2);
   it('only emits points inside regions, tagged category:land with regionId set', () => {

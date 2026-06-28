@@ -11,6 +11,14 @@ function polyTrueArea(polygon) {
   return a > 2 * Math.PI ? 4 * Math.PI - a : a;
 }
 
+// Winding-safe total area (steradians) of a Polygon/MultiPolygon.
+function geometryArea(geometry) {
+  const polys = geometry.type === 'MultiPolygon' ? geometry.coordinates
+    : geometry.type === 'Polygon' ? [geometry.coordinates]
+    : [];
+  return polys.reduce((sum, poly) => sum + polyTrueArea(poly), 0);
+}
+
 // Same polygon with its exterior ring normalized to CCW winding, so geoCentroid reads
 // the small interior (not the antipodal complement). Mirrors normalizeExteriorRing in
 // scripts/lib/points.mjs.
@@ -74,10 +82,21 @@ export function buildRegions(countriesFC, statesFC) {
   const countryNameById = new Map(); // code -> display name, for prefixing sub-region names
   const territoryGeomsByParent = new Map(); // parent code -> [territory geometry, ...]
 
-  // Non-state-level countries -> admin-0 region.
+  // One admin-0 feature per ISO code: keep the largest by area. A few Natural Earth
+  // features share a code (AU = Australia + Indian Ocean Ter. + Ashmore and Cartier Is.);
+  // the largest IS the country, the rest are tiny detached dependencies we drop entirely.
+  const bestByCode = new Map();
   for (const f of countriesFC.features) {
     const code = iso2(f.properties).toUpperCase();
     if (!code || code === '-99') continue;
+    const area = geometryArea(f.geometry);
+    const prev = bestByCode.get(code);
+    if (!prev || area > prev.area) bestByCode.set(code, { feature: f, area });
+  }
+
+  // Non-state-level countries -> admin-0 region.
+  for (const { feature: f } of bestByCode.values()) {
+    const code = iso2(f.properties).toUpperCase();
     const name = countryName(f.properties);
     countryNameById.set(code, name);
     if (STATE_LEVEL.includes(code)) continue;

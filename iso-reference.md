@@ -19,8 +19,6 @@ Use these ids as keys in `data/highlights.json`.
 | AS | American Samoa |
 | AT | Austria |
 | AU | Australia |
-| AU | Indian Ocean Ter. |
-| AU | Ashmore and Cartier Is. |
 | AW | Aruba |
 | AX | Åland |
 | AZ | Azerbaijan |

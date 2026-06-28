@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRegions } from './lib/regions.mjs';
-import { generatePoints } from './lib/points.mjs';
+import { generatePoints, ensureRegionDots } from './lib/points.mjs';
 import { buildIsoReference } from './lib/reference.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -23,7 +23,10 @@ console.log('Building regions...');
 const { regions, features } = buildRegions(countries, states);
 
 console.log(`Generating points for ${features.length} regions (this can take a minute)...`);
-const points = generatePoints(features, coastline, countryLines, stateLines);
+const points = ensureRegionDots(
+  generatePoints(features, coastline, countryLines, stateLines),
+  regions,
+);
 
 const outDir = join(root, 'public', 'data');
 await mkdir(outDir, { recursive: true });

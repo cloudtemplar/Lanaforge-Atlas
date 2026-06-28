@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildRegionIndex, assignRegion, assignRegionNudged, assignRegionsNudged,
   generateLandPoints, generateCoastPoints, generateBorderPoints,
-  thinByHierarchy,
+  thinByHierarchy, ensureRegionDots,
 } from '../scripts/lib/points.mjs';
 
 const square = (cx, cy, r = 10) => ({
@@ -184,6 +184,37 @@ describe('generateBorderPoints', () => {
   it('keeps ADM0_A3:BRA (KEPT) and drops ADM0_A3:PRT (DROPPED)', () => {
     expect(pts.some(p => p.lon >= 30 && p.lon <= 31 && p.lat >= 30 && p.lat <= 31)).toBe(true);
     expect(pts.some(p => p.lon >= 40 && p.lon <= 41 && p.lat >= 40 && p.lat <= 41)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('ensureRegionDots', () => {
+  const regions = [
+    { id: 'AA', name: 'A', centroid: { lat: 0, lon: 0 } },     // already covered
+    { id: 'ZZ', name: 'Z', centroid: { lat: 12, lon: 34 } },   // no dots -> needs one
+    { id: 'BORD', name: 'B', centroid: { lat: 5, lon: 5 } },   // covered only via regionIds
+  ];
+  const points = [
+    { lat: 0, lon: 0, regionId: 'AA', category: 'land' },
+    { lat: 5, lon: 5, regionIds: ['BORD', 'XX'], category: 'border' },
+  ];
+  const out = ensureRegionDots(points, regions);
+
+  it('appends a centroid dot for a region with no dots', () => {
+    const zz = out.filter((p) => p.regionId === 'ZZ');
+    expect(zz).toHaveLength(1);
+    expect(zz[0]).toMatchObject({ lat: 12, lon: 34, regionId: 'ZZ', category: 'land' });
+  });
+  it('does not add dots for regions already covered by regionId', () => {
+    expect(out.filter((p) => p.regionId === 'AA')).toHaveLength(1);
+  });
+  it('counts coverage via border regionIds too', () => {
+    // BORD is only present inside a border dot's regionIds — must NOT get an extra dot.
+    expect(out.some((p) => p.regionId === 'BORD')).toBe(false);
+  });
+  it('leaves the original points untouched', () => {
+    expect(out).toEqual(expect.arrayContaining(points));
+    expect(out).toHaveLength(points.length + 1);
   });
 });
 

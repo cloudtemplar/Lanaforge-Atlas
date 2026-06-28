@@ -29,7 +29,12 @@ Region ids are **ISO 3166**: country = alpha-2 (`JP`, `FR`, `PT`); sub-region = 
 (`BR-SP`, `US-CA`, `CA-ON`). Only **3 countries** are marked at state level (admin-1) —
 `STATE_LEVEL = ['BR','US','CA']` in `src/config.js`. Every other country (incl. Japan, all of
 Europe/UK, AR, AU) is a whole-country admin-0 region. `iso-reference.md` (generated) lists all
-valid ids.
+valid ids. When several admin-0 features share one ISO code (e.g. `AU` = Australia + Indian Ocean
+Ter. + Ashmore and Cartier Is.), `buildRegions` keeps only the **largest by area** (the country)
+and drops the tiny dependencies, so each id maps to exactly one region. Every region is guaranteed
+highlightable: `ensureRegionDots` (build-time, after thinning) appends one representative dot at the
+centroid of any region too small for the dot grid to land on (Vatican, Monaco, Saba, …), so it
+lights up even though it has no traced coast/land dots.
 
 A short list of **detached territories** (`TERRITORY_REGIONS` in `src/config.js` — Azores `PT-20`,
 Madeira `PT-30`, Canaries `ES-GC`/`ES-TF`, French overseas `FR-GF`/`FR-GP`/`FR-MQ`/`FR-RE`/`FR-YT`,
@@ -124,12 +129,14 @@ drawn over the dots and gated by zoom tier (`zoomTier`). Per region:
   `assignRegionsNudged` (all adjacent regions, for borders), `generateLandPoints`,
   `generateCoastPoints`, `generateBorderPoints(…, index, stepDeg)` (border dots get `regionIds`),
   `thinByHierarchy(coast, border, land, clearanceDeg, coastGapDeg, landClearanceDeg)` (priority cull + coast
-  self-spacing, see Dot system), `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`.
-  Point = `{lat,lon,category}` + `regionId` (coast/land) or `regionIds` (border). `ISO3_TO_ISO2` map
-  (BRA/USA/CAN) filters state lines.
+  self-spacing, see Dot system), `generatePoints(features, coastlineFC, countryLinesFC, stateLinesFC)`,
+  `ensureRegionDots(points, regions)` (append a centroid dot for any region with no dots — see
+  Region model). Point = `{lat,lon,category}` + `regionId` (coast/land) or `regionIds` (border).
+  `ISO3_TO_ISO2` map (BRA/USA/CAN) filters state lines.
 - `scripts/lib/reference.mjs` — `buildIsoReference` → `iso-reference.md`.
 - `scripts/preprocess.mjs` — orchestrator (writes regions.json, points.json, iso-reference.md;
-  **no borders.json** in v2).
+  **no borders.json** in v2). Wraps `generatePoints` in `ensureRegionDots` so every region is
+  highlightable.
 - `data/highlights.json` — AUTHOR-EDITED, committed, `{ regionId: [names] }`.
 - `public/data/` & `scripts/geo-src/` — GENERATED, gitignored.
 - `test/` — geo, regions, points, highlight, labels, labels.cursor, labels.lifecycle, theme,

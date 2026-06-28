@@ -268,6 +268,27 @@ export function thinByHierarchy(coast, border, land, clearanceDeg = 0.6, coastGa
 }
 
 /**
+ * Guarantee every region is highlightable. Tiny states/islands smaller than the dot grid
+ * (Vatican, Monaco, Saba, …) can end up with no generated dot, so they appear in the ISO
+ * reference yet light up nothing. For each region not covered by any existing dot's
+ * `regionId`/`regionIds`, append a single representative dot at its centroid (category
+ * 'land', tagged with the region id). Run AFTER thinning so the guaranteed dots survive.
+ */
+export function ensureRegionDots(points, regions) {
+  const covered = new Set();
+  for (const p of points) {
+    if (p.regionId) covered.add(p.regionId);
+    if (p.regionIds) for (const id of p.regionIds) covered.add(id);
+  }
+  const added = [];
+  for (const r of regions) {
+    if (covered.has(r.id)) continue;
+    added.push({ lat: r.centroid.lat, lon: r.centroid.lon, regionId: r.id, category: 'land' });
+  }
+  return points.concat(added);
+}
+
+/**
  * Master point generator. Produces all three categories, then thins lower-priority
  * dots away from higher-priority ones (see thinByHierarchy).
  */

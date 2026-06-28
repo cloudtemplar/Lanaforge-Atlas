@@ -14,10 +14,14 @@ const mainlandPlusFar = (main, far) => ({
   type: 'MultiPolygon',
   coordinates: [[ring(main[0], main[1], 3)], [ring(far[0], far[1], 1)]],
 });
+const polyR = (cx, cy, r) => ({ type: 'Polygon', coordinates: [ring(cx, cy, r)] });
 const countries = { type: 'FeatureCollection', features: [
   { properties: { ISO_A2_EH: 'US', NAME: 'United States' }, geometry: square(-98, 38) }, // state-level -> excluded
   { properties: { ISO_A2_EH: 'PT', NAME: 'Portugal' }, geometry: square(-8, 39) },        // not state-level -> included as country
   { properties: { ISO_A2_EH: 'FR', NAME: 'France' }, geometry: mainlandPlusFar([2, 47], [-53, 4]) }, // mainland + overseas
+  // Three features sharing ISO 'AU' (tiny dependency FIRST to prove we keep by area, not order).
+  { properties: { ISO_A2_EH: 'AU', NAME: 'Indian Ocean Ter.' }, geometry: polyR(105, -10, 0.5) },
+  { properties: { ISO_A2_EH: 'AU', NAME: 'Australia' }, geometry: polyR(133, -25, 10) },
 ]};
 const states = { type: 'FeatureCollection', features: [
   { properties: { iso_3166_2: 'US-CA', name: 'California', iso_a2: 'US' }, geometry: square(-119, 36) }, // parent US state-level -> included
@@ -74,6 +78,20 @@ describe('detached territory regions', () => {
   it('orders territory features before the parent country feature', () => {
     const fids = features.map((f) => f.id);
     expect(fids.indexOf('PT-20')).toBeLessThan(fids.indexOf('PT'));
+  });
+});
+
+describe('duplicate ISO codes collapse to the largest feature', () => {
+  const { regions, features } = buildRegions(countries, states);
+
+  it('emits exactly one region for a code shared by several features', () => {
+    expect(regions.filter((r) => r.id === 'AU')).toHaveLength(1);
+  });
+  it('keeps the largest feature (Australia), dropping the tiny dependencies', () => {
+    expect(regions.find((r) => r.id === 'AU').name).toBe('Australia');
+  });
+  it('emits exactly one country feature for the code', () => {
+    expect(features.filter((f) => f.id === 'AU')).toHaveLength(1);
   });
 });
 

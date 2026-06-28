@@ -1,8 +1,40 @@
-import { geoCentroid } from 'd3-geo';
+import { geoCentroid, geoArea } from 'd3-geo';
 import { STATE_LEVEL, STATE_COUNTRY_LABEL, TERRITORY_REGIONS } from '../../src/config.js';
 
 const iso2 = (p) => p.ISO_A2_EH || p.ISO_A2 || p.iso_a2_eh || p.iso_a2 || '';
 const countryName = (p) => p.NAME || p.ADMIN || p.name || '';
+
+// A polygon's TRUE area (steradians), winding-independent: a ring wound the "wrong" way
+// is read by d3 as the sphere's complement (area > 2π), so fold it back.
+function polyTrueArea(polygon) {
+  const a = geoArea({ type: 'Polygon', coordinates: [polygon[0]] });
+  return a > 2 * Math.PI ? 4 * Math.PI - a : a;
+}
+
+// Same polygon with its exterior ring normalized to CCW winding, so geoCentroid reads
+// the small interior (not the antipodal complement). Mirrors normalizeExteriorRing in
+// scripts/lib/points.mjs.
+function ccwPolygon(polygon) {
+  const ext = polygon[0];
+  const exterior = geoArea({ type: 'Polygon', coordinates: [ext] }) > 2 * Math.PI ? [...ext].reverse() : ext;
+  return { type: 'Polygon', coordinates: [exterior, ...polygon.slice(1)] };
+}
+
+// Centroid of a region's MAIN landmass. For a MultiPolygon, that's the largest polygon
+// by area; for a Polygon, the whole thing. Used for country labels so a country's far
+// detached parts (e.g. France's overseas territories) don't drag the area-weighted
+// whole-geometry centroid out into the ocean.
+function mainlandCentroid(geometry) {
+  if (geometry.type !== 'MultiPolygon' || geometry.coordinates.length < 2) {
+    return geoCentroid({ type: 'Feature', geometry });
+  }
+  let best = null, bestArea = -Infinity;
+  for (const polygon of geometry.coordinates) {
+    const area = polyTrueArea(polygon);
+    if (area > bestArea) { bestArea = area; best = polygon; }
+  }
+  return geoCentroid(ccwPolygon(best));
+}
 
 export function buildRegions(countriesFC, statesFC) {
   const regions = [];
@@ -20,7 +52,7 @@ export function buildRegions(countriesFC, statesFC) {
     const name = countryName(f.properties);
     countryNameById.set(code, name);
     if (STATE_LEVEL.includes(code)) continue;
-    const [lon, lat] = geoCentroid(f);
+    const [lon, lat] = mainlandCentroid(f.geometry);
     regions.push({ id: code, name, centroid: { lat, lon } });
     countryFeatures.push({ id: code, geometry: f.geometry });
   }

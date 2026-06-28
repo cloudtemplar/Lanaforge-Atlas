@@ -75,6 +75,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 .people-list {
   pointer-events: none;
   text-align: center;
+  user-select: none; -webkit-user-select: none; /* country/name text isn't draggable-selectable */
   color: var(--text);
   font-weight: 400;
   font-size: 13px;
@@ -99,12 +100,19 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 .people-list.collapsible .region-name {
   display: block; width: fit-content; margin-left: auto; margin-right: auto; cursor: pointer;
 }
+/* CSS-drawn triangle caret (not a text glyph): a font chevron sits on its own
+   baseline and can't be vertically centred; a border-triangle centres cleanly.
+   Points right when collapsed, rotates to point down when expanded. */
 .people-list.collapsible .region-name::after {
-  content: '\2304'; /* ⌄ chevron; points right when collapsed, down when expanded */
-  display: inline-block; margin-left: 1px; font-size: 0.85em; opacity: 0.6;
-  transform: rotate(-90deg); transition: transform 150ms ease;
+  content: ''; display: inline-block; margin-left: 3px;
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  opacity: 0.6; vertical-align: middle;
+  transition: transform 150ms ease;
 }
-.people-list.collapsible.expanded .region-name::after { transform: rotate(0deg); }
+.people-list.collapsible.expanded .region-name::after { transform: rotate(90deg); }
 .people-list ul { list-style: none; }
 .people-list .more {
   margin-top: 2px; background: transparent; border: none; color: var(--text);
@@ -112,7 +120,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
 }
 
 /* People count sits just left of the caret, inside the always-visible name header. */
-.people-list .region-name .count { margin-left: 6px; font-weight: 400; opacity: 0.7; }
+.people-list .region-name .count { margin-left: 6px; font-weight: 400; opacity: 0.7; vertical-align: middle; }
 
 /* State swap: collapsed header by default, names list when .expanded (no flicker on .region-name). */
 .people-list .names { display: none; }

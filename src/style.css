@@ -51,6 +51,16 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); }
   pointer-events: none;
 }
 #overlay { position: fixed; inset: 0; pointer-events: none; font-family: 'Rajdhani', sans-serif; }
+
+/* Faint, non-interactive signature centered along the bottom edge. Uses --text so it adapts
+   to the theme; kept very low-opacity so it never competes with the globe/labels. */
+#watermark {
+  position: fixed; left: 50%; bottom: var(--page-pad); transform: translateX(-50%); z-index: 10;
+  color: var(--text); opacity: 0.5;
+  font-family: 'Rajdhani', sans-serif; font-weight: 400; font-size: 16px;
+  letter-spacing: 0.18em; white-space: nowrap;
+  pointer-events: none; user-select: none; -webkit-user-select: none;
+}
 /* Borderless icon-only theme toggle: a sun/moon "coin" that flips on rotateY when the theme
    changes (driven by :root[data-theme]). The button only handles the hover/opacity so it never
    fights the inner .flip rotation. */

@@ -13,6 +13,7 @@ const countries = { type: 'FeatureCollection', features: [
 const states = { type: 'FeatureCollection', features: [
   { properties: { iso_3166_2: 'US-CA', name: 'California', iso_a2: 'US' }, geometry: square(-119, 36) }, // parent US state-level -> included
   { properties: { iso_3166_2: 'PT-11', name: 'Lisboa', iso_a2: 'PT' }, geometry: square(-9, 38) },       // parent PT not state-level -> excluded
+  { properties: { iso_3166_2: 'PT-20', name: 'Azores', iso_a2: 'PT' }, geometry: square(-27, 38) },     // TERRITORY_REGIONS -> carved out
 ]};
 
 describe('buildRegions', () => {
@@ -43,5 +44,25 @@ describe('buildRegions', () => {
   it('leaves non-state-level country names unprefixed', () => {
     const pt = regions.find(r => r.id === 'PT');
     expect(pt.name).toBe('Portugal');
+  });
+});
+
+describe('detached territory regions', () => {
+  const { regions, features } = buildRegions(countries, states);
+  const ids = regions.map((r) => r.id);
+
+  it('emits a region for a TERRITORY_REGIONS code', () => {
+    expect(ids).toContain('PT-20');
+  });
+  it('prefixes the territory name with the parent country name', () => {
+    const az = regions.find((r) => r.id === 'PT-20');
+    expect(az.name).toBe('Portugal - Azores');
+  });
+  it('still emits the parent country as its own region', () => {
+    expect(ids).toContain('PT');
+  });
+  it('orders territory features before the parent country feature', () => {
+    const fids = features.map((f) => f.id);
+    expect(fids.indexOf('PT-20')).toBeLessThan(fids.indexOf('PT'));
   });
 });

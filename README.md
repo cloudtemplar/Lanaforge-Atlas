@@ -1,7 +1,7 @@
 # Lanaforge Atlas
 
 A minimalist transparent **dot-matrix 3D globe** (Vite + three.js) highlighting the world
-regions where I've met people.
+regions as you please.
 
 - Slowly auto-rotating, transparent globe (you can see the far side through it).
 - Left-drag to rotate, scroll to zoom. Rotation pauses only while you drag, and resumes on release.
